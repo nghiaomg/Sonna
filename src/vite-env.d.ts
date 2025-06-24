@@ -18,6 +18,7 @@ declare global {
       downloadService: (serviceName: string) => Promise<any>;
       onDownloadProgress: (callback: any) => void;
       resetInstallationStatus: () => Promise<any>;
+      refreshConfig: () => Promise<any>;
       cleanupApplications: () => Promise<any>;
       deleteService: (serviceName: string) => Promise<any>;
       platform: string;

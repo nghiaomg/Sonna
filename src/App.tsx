@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Titlebar } from '@/components/ui/titlebar';
 import { DownloadManager } from '@/components/ui/download-manager';
 import { CleanupManager } from '@/components/ui/cleanup-manager';
-import { Server, Database, Globe, Code, Play, Square, Settings, Moon, Sun, Download, Trash2 } from 'lucide-react';
+import { Settings } from '@/components/ui/settings';
+import { Server, Database, Globe, Code, Play, Square, Settings as SettingsIcon, Moon, Sun, Download, Trash2 } from 'lucide-react';
+import { useLanguage } from '@/lib/language-context';
+import { DEFAULT_CONFIG } from '@/config/default-config';
 
 interface Service {
   name: string;
@@ -17,6 +20,8 @@ interface Service {
 }
 
 function App() {
+  const { t } = useLanguage();
+  
   const [services, setServices] = useState<Service[]>([
     { name: 'apache', displayName: 'Apache', icon: <Server className="w-5 h-5" />, running: false, port: 80, installed: false },
     { name: 'mysql', displayName: 'MySQL', icon: <Database className="w-5 h-5" />, running: false, port: 3306, installed: false },
@@ -27,7 +32,7 @@ function App() {
   ]);
 
   const [darkMode, setDarkMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'services' | 'install' | 'cleanup'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'install' | 'cleanup' | 'settings'>('services');
 
   useEffect(() => {
     // Apply dark mode class to document
@@ -55,7 +60,7 @@ function App() {
           }))
         );
       } catch (error) {
-        console.error('Failed to load services status:', error);
+        console.error(`${t.failedToLoad}:`, error);
       }
     }
   };
@@ -149,17 +154,29 @@ function App() {
             downloadUrl: service.downloadUrl
           }));
           setDownloadServices(servicesList);
+        } else {
+          // Config file doesn't exist, fallback to default services
+          console.log('Config file not found, using default services');
+          const servicesList = Object.values(DEFAULT_CONFIG.services).map((service: any) => ({
+            name: service.name,
+            displayName: service.displayName,
+            version: service.version,
+            installed: service.installed,
+            downloadUrl: service.downloadUrl
+          }));
+          setDownloadServices(servicesList);
         }
       } catch (error) {
         console.error('Failed to load service configurations:', error);
         // Fallback to default services
-        setDownloadServices(services.map(service => ({
+        const servicesList = Object.values(DEFAULT_CONFIG.services).map((service: any) => ({
           name: service.name,
           displayName: service.displayName,
-          version: '8.3.0', // Default version
+          version: service.version,
           installed: service.installed,
-          downloadUrl: ''
-        })));
+          downloadUrl: service.downloadUrl
+        }));
+        setDownloadServices(servicesList);
       }
     }
   };
@@ -178,18 +195,32 @@ function App() {
     }
   };
 
+  const refreshConfig = async () => {
+    if (window.electronAPI) {
+      try {
+        const result = await window.electronAPI.refreshConfig();
+        if (result.success) {
+          await loadServicesStatus();
+          await loadServiceConfigurations();
+        }
+      } catch (error) {
+        console.error('Failed to refresh config:', error);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Custom Titlebar */}
-      <Titlebar title="Sonna - Modern Local Dev Environment" />
+      <Titlebar title={`${t.appTitle} - ${t.appSubtitle}`} />
       
       {/* Header */}
       <header className="border-b bg-card">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-4">
             <img src="/logo.png" alt="Sonna" className="w-8 h-8" />
-            <h1 className="text-xl font-bold">Sonna</h1>
-            <span className="text-sm text-muted-foreground">Modern Local Dev Environment</span>
+            <h1 className="text-xl font-bold">{t.appTitle}</h1>
+            <span className="text-sm text-muted-foreground">{t.appSubtitle}</span>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -201,7 +232,7 @@ function App() {
               size="sm"
               onClick={() => setActiveTab('services')}
             >
-              Services
+              {t.services}
             </Button>
             <Button 
               variant={activeTab === 'install' ? 'default' : 'outline'} 
@@ -209,7 +240,7 @@ function App() {
               onClick={() => setActiveTab('install')}
             >
               <Download className="w-4 h-4 mr-2" />
-              Install
+              {t.install}
             </Button>
             <Button 
               variant={activeTab === 'cleanup' ? 'default' : 'outline'} 
@@ -217,18 +248,29 @@ function App() {
               onClick={() => setActiveTab('cleanup')}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Cleanup
+              {t.cleanup}
+            </Button>
+            <Button 
+              variant={activeTab === 'settings' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveTab('settings')}
+            >
+              <SettingsIcon className="w-4 h-4 mr-2" />
+              {t.settings}
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               onClick={resetInstallationStatus}
             >
-              Reset Status
+              {t.resetStatus}
             </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={refreshConfig}
+            >
+              Refresh Config
             </Button>
           </div>
         </div>
@@ -251,25 +293,32 @@ function App() {
             />
           )}
           
+          {activeTab === 'settings' && (
+            <Settings 
+              darkMode={darkMode}
+              onToggleDarkMode={() => setDarkMode(!darkMode)}
+            />
+          )}
+          
           {activeTab === 'services' && (
             <>
               {/* Control Panel */}
               <Card>
             <CardHeader>
-              <CardTitle>Service Control</CardTitle>
+              <CardTitle>{t.serviceControl}</CardTitle>
               <CardDescription>
-                Manage your local development services
+                {t.serviceControlDesc}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex space-x-4 mb-6">
                 <Button onClick={startAllServices} className="flex items-center">
                   <Play className="w-4 h-4 mr-2" />
-                  Start All
+                  {t.startAll}
                 </Button>
                 <Button onClick={stopAllServices} variant="destructive" className="flex items-center">
                   <Square className="w-4 h-4 mr-2" />
-                  Stop All
+                  {t.stopAll}
                 </Button>
               </div>
 
@@ -291,8 +340,8 @@ function App() {
                                  service.running ? 'bg-green-500' : 'bg-red-500'
                                }`}></span>
                                <span>
-                                 {!service.installed ? 'Not Installed' : 
-                                  service.running ? 'Running' : 'Stopped'}
+                                 {!service.installed ? t.notInstalled : 
+                                  service.running ? t.running : t.stopped}
                                </span>
                                {service.port && service.running && (
                                  <span>:{service.port}</span>
@@ -309,7 +358,7 @@ function App() {
                                className="h-8 px-3"
                              >
                                <Download className="w-4 h-4 mr-1" />
-                               Install
+                               {t.install_button}
                              </Button>
                            ) : service.running ? (
                              <Button
@@ -318,7 +367,7 @@ function App() {
                                onClick={() => toggleService(service.name)}
                                className="h-8 px-3"
                              >
-                               Stop
+                               {t.stop}
                              </Button>
                            ) : (
                              <Button
@@ -327,7 +376,7 @@ function App() {
                                onClick={() => toggleService(service.name)}
                                className="h-8 px-3"
                              >
-                               Start
+                               {t.start}
                              </Button>
                            )}
                          </div>
@@ -342,16 +391,16 @@ function App() {
           {/* Projects */}
           <Card>
             <CardHeader>
-              <CardTitle>Local Projects</CardTitle>
+              <CardTitle>{t.localProjects}</CardTitle>
               <CardDescription>
-                Your web development projects
+                {t.localProjectsDesc}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
                 <Globe className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No projects found</p>
-                <p className="text-sm">Projects will be automatically detected in your web root directory</p>
+                <p>{t.noProjectsFound}</p>
+                <p className="text-sm">{t.noProjectsFoundDesc}</p>
               </div>
             </CardContent>
           </Card>

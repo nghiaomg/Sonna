@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDownloadProgress: (callback: any) => ipcRenderer.on('download-progress', callback),
   removeDownloadProgressListener: (callback: any) => ipcRenderer.removeListener('download-progress', callback),
   resetInstallationStatus: () => ipcRenderer.invoke('reset-installation-status'),
+  refreshConfig: () => ipcRenderer.invoke('refresh-config'),
   cleanupApplications: () => ipcRenderer.invoke('cleanup-applications'),
   deleteService: (serviceName: string) => ipcRenderer.invoke('delete-service', serviceName),
   

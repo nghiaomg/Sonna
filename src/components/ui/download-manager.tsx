@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Download, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/language-context';
 
 interface DownloadProgress {
   serviceName: string;
@@ -26,6 +27,7 @@ interface DownloadManagerProps {
 }
 
 export function DownloadManager({ services, onServiceInstalled }: DownloadManagerProps) {
+  const { t } = useLanguage();
   const [downloads, setDownloads] = useState<Map<string, DownloadProgress>>(new Map());
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -66,7 +68,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
           serviceName,
           progress: 0,
           status: 'downloading',
-          message: 'Preparing download...'
+          message: t.preparingDownload
         })));
 
         await window.electronAPI.downloadService(serviceName);
@@ -76,7 +78,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
           serviceName,
           progress: 0,
           status: 'error',
-          message: `Failed to download: ${error}`
+          message: `${t.failedToDownload}: ${error}`
         })));
       }
     }
@@ -120,7 +122,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />
-            <span>Initializing Sonna...</span>
+            <span>{t.initializingSonna}</span>
           </div>
         </CardContent>
       </Card>
@@ -130,9 +132,9 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Service Installation</CardTitle>
+        <CardTitle>{t.serviceInstallation}</CardTitle>
         <CardDescription>
-          Download and install development services to C:/sonna/applications
+          {t.serviceInstallationDesc}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -183,7 +185,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                   {isCompleted ? (
                     <span className="text-green-600 font-medium flex items-center">
                       <CheckCircle className="w-4 h-4 mr-1" />
-                      Installed
+                      {t.installed}
                     </span>
                   ) : (
                     <Button
@@ -194,12 +196,12 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                       {isDownloading ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Installing...
+                          {t.installing}
                         </>
                       ) : (
                         <>
                           <Download className="w-4 h-4 mr-2" />
-                          Install
+                          {t.install_button}
                         </>
                       )}
                     </Button>

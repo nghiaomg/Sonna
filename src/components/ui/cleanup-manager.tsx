@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Trash2, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/lib/language-context';
 
 interface Service {
   name: string;
@@ -17,6 +18,7 @@ interface CleanupManagerProps {
 }
 
 export function CleanupManager({ services, onServiceDeleted }: CleanupManagerProps) {
+  const { t } = useLanguage();
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [deletingServices, setDeletingServices] = useState<Set<string>>(new Set());
   const [lastCleanupResult, setLastCleanupResult] = useState<string | null>(null);
@@ -80,10 +82,10 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Trash2 className="w-5 h-5" />
-          Application Cleanup
+          {t.applicationCleanup}
         </CardTitle>
         <CardDescription>
-          Manage installed services and free up disk space
+          {t.applicationCleanupDesc}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -92,9 +94,9 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
           <div className="bg-muted p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium">Installed Services</h3>
+                <h3 className="font-medium">{t.installedServices}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {installedServices.length} services • Estimated size: {getTotalSize()}
+                  {installedServices.length} services • {t.estimatedSize}: {getTotalSize()}
                 </p>
               </div>
               <Button
@@ -106,12 +108,12 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
                 {isCleaningUp ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Cleaning...
+                    {t.cleaning}
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Cleanup All
+                    {t.cleanupAll}
                   </>
                 )}
               </Button>
@@ -133,7 +135,7 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
           {/* Individual Services */}
           {installedServices.length > 0 ? (
             <div className="space-y-3">
-              <h4 className="font-medium">Individual Services</h4>
+              <h4 className="font-medium">{t.individualServices}</h4>
               {installedServices.map((service) => {
                 const isDeleting = deletingServices.has(service.name);
                 
@@ -156,17 +158,17 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
                       disabled={isDeleting}
                       className="flex items-center gap-2 text-destructive hover:text-destructive"
                     >
-                      {isDeleting ? (
-                        <>
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="w-3 h-3" />
-                          Delete
-                        </>
-                      )}
+                                              {isDeleting ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            {t.deleting}
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-3 h-3" />
+                            {t.delete}
+                          </>
+                        )}
                     </Button>
                   </div>
                 );
@@ -175,8 +177,8 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Trash2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <h4 className="font-medium mb-2">No Services Installed</h4>
-              <p className="text-sm">Install some services first to manage them here.</p>
+              <h4 className="font-medium mb-2">{t.noServicesInstalled}</h4>
+              <p className="text-sm">{t.noServicesInstalledDesc}</p>
             </div>
           )}
 
@@ -185,10 +187,9 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
             <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
               <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
               <div className="text-sm">
-                <p className="font-medium text-amber-700 dark:text-amber-400">Warning</p>
+                <p className="font-medium text-amber-700 dark:text-amber-400">{t.warning}</p>
                 <p className="text-amber-600 dark:text-amber-300">
-                  This will permanently delete all installed applications and their data. 
-                  Make sure to backup any important configurations first.
+                  {t.warningMessage}
                 </p>
               </div>
             </div>

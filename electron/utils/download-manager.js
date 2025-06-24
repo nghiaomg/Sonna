@@ -43,9 +43,15 @@ class DownloadManager {
     }
     async downloadFile(url, dest, serviceName) {
         return new Promise((resolve, reject) => {
+            console.log(`Starting download: ${serviceName} from ${url}`);
             const protocol = url.startsWith('https') ? https : http;
             const file = fs.createWriteStream(dest);
-            const request = protocol.get(url, (response) => {
+            const options = {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            };
+            const request = protocol.get(url, options, (response) => {
                 // Handle redirects
                 if (response.statusCode === 301 || response.statusCode === 302) {
                     if (response.headers.location) {
@@ -87,6 +93,8 @@ class DownloadManager {
                     }
                     // Check if file is actually a zip file by reading first few bytes
                     const buffer = fs.readFileSync(dest, { encoding: null, flag: 'r' });
+                    console.log(`Downloaded file size: ${downloadedSize} bytes, buffer length: ${buffer.length}`);
+                    console.log(`First 4 bytes: ${buffer.slice(0, 4).toString('hex')}`);
                     if (buffer.length < 4) {
                         fs.unlinkSync(dest);
                         reject(new Error('Downloaded file is too small'));
@@ -94,8 +102,11 @@ class DownloadManager {
                     }
                     // Check for ZIP file signature (PK)
                     if (buffer[0] !== 0x50 || buffer[1] !== 0x4B) {
+                        // Log first 100 bytes of file to see what we actually downloaded
+                        const preview = buffer.slice(0, Math.min(100, buffer.length)).toString('utf8');
+                        console.log(`File preview: ${preview}`);
                         fs.unlinkSync(dest);
-                        reject(new Error('Downloaded file is not a valid ZIP file'));
+                        reject(new Error(`Downloaded file is not a valid ZIP file. Got ${buffer[0].toString(16)} ${buffer[1].toString(16)} instead of 50 4B`));
                         return;
                     }
                     resolve();

@@ -146,8 +146,8 @@ export class ConfigManager {
         apache: {
           name: "apache",
           displayName: "Apache",
-          version: "2.4.58",
-          downloadUrl: "https://www.apachelounge.com/download/VS17/binaries/httpd-2.4.58-240904-win64-VS17.zip",
+          version: "2.4.63",
+          downloadUrl: "https://www.apachelounge.com/download/VS17/binaries/httpd-2.4.63-250207-win64-VS17.zip",
           extractPath: path.join(applicationsPath, 'apache'),
           executable: "bin/httpd.exe",
           port: 80,

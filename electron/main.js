@@ -126,6 +126,23 @@ electron_1.ipcMain.handle('is-window-maximized', async () => {
 electron_1.ipcMain.handle('reset-installation-status', async () => {
     return await configManager.resetInstallationStatus();
 });
+electron_1.ipcMain.handle('refresh-config', async () => {
+    try {
+        // Force recreate config with latest default values
+        const fs = require('fs');
+        const configPath = 'C:/sonna/config.json';
+        // Delete existing config
+        if (fs.existsSync(configPath)) {
+            fs.unlinkSync(configPath);
+        }
+        // Reinitialize to create new config
+        const result = await configManager.initialize();
+        return result;
+    }
+    catch (error) {
+        return { success: false, message: `Failed to refresh config: ${error}` };
+    }
+});
 // Clean up applications
 electron_1.ipcMain.handle('cleanup-applications', async () => {
     const applicationsPath = 'C:/sonna/applications';
