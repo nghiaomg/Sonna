@@ -12,6 +12,26 @@ dist
 dist-ssr
 *.local
 
+# Build outputs
+release/
+*.exe
+*.dmg
+*.snap
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+*.AppImage
+
+# Electron build cache
+.electron-builder/
+*.cache
+
+# Windows build
+win-ia32-unpacked/
+win-unpacked/
+win32/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,3 +42,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Build scripts output
+build-log.txt

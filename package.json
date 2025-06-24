@@ -9,6 +9,11 @@
     "build": "tsc -p electron && vite build",
     "build:electron": "tsc -p electron",
     "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:win64": "npm run build && electron-builder --win --x64",
+    "dist:win32": "npm run build && electron-builder --win --ia32",
+    "dist:portable": "npm run build && electron-builder --win portable",
+    "build:win": "npm run build && npm run dist:win",
     "lint": "eslint .",
     "preview": "vite preview",
     "postinstall": "npm run build:electron"
@@ -55,30 +60,56 @@
   "build": {
     "appId": "com.sonna.app",
     "productName": "Sonna",
+    "description": "Modern Local Development Environment for Windows",
+    "copyright": "Copyright © 2024 nghiaomg",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
       "!electron/**/*.ts",
-      "node_modules/**/*"
+      "!electron/tsconfig.json",
+      "node_modules/**/*",
+      "!node_modules/.cache",
+      "public/logo.ico",
+      "public/logo.png"
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "ia32"]
         }
       ],
-      "requestedExecutionLevel": "requireAdministrator"
+      "icon": "public/logo.ico",
+      "requestedExecutionLevel": "requireAdministrator",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "publisherName": "nghiaomg"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "public/logo.ico",
+      "uninstallerIcon": "public/logo.ico",
+      "installerHeaderIcon": "public/logo.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sonna",
+      "include": "build/installer.nsh"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
     }
   }
 }
