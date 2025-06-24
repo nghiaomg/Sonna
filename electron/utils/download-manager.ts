@@ -145,7 +145,7 @@ export class DownloadManager {
           status: 'extracting',
           message: 'Extracting files...'
         });
-
+        
         // Test if zip is valid before extraction
         let zip;
         try {

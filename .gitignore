@@ -46,5 +46,7 @@ win32/
 # Build scripts output
 build-log.txt
 
-
 build-windows.bat
+
+dist-electron/
+release/

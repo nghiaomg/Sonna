@@ -20,7 +20,7 @@ export default defineConfig({
         entry: 'electron/main.ts',
         vite: {
           build: {
-            outDir: 'dist/electron',
+            outDir: 'dist-electron',
             rollupOptions: {
               external: ['electron'],
             },
@@ -31,7 +31,7 @@ export default defineConfig({
         entry: 'electron/preload.ts',
         vite: {
           build: {
-            outDir: 'dist/electron',
+            outDir: 'dist-electron',
           },
         },
       },
@@ -60,25 +60,16 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
-  },
-  base: './',
-  build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-    assetsDir: 'assets',
-    rollupOptions: {
-      input: {
-        main: path.resolve(__dirname, 'index.html'),
-      },
-      output: {
-        manualChunks: undefined,
-      },
+      '@': path.resolve(__dirname, 'src'),
     },
   },
   server: {
-    port: 5173,
-    strictPort: true,
+    host: '127.0.0.1',
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    emptyOutDir: true,
+    watch: process.env.NODE_ENV === 'development' ? {} : null,
   },
 })

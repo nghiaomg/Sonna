@@ -86,10 +86,25 @@ export class ServiceConfigurator {
     if (fs.existsSync(httpdConfPath)) {
       let httpdConf = fs.readFileSync(httpdConfPath, 'utf8');
       
+      // Get port from config
+      let port = 80;
+      try {
+        const configManager = new (require('./config-manager').ConfigManager)();
+        const configResult = await configManager.getConfig();
+        if (configResult.success && configResult.config && configResult.config.services.apache) {
+          port = configResult.config.services.apache.port || 80;
+        }
+      } catch (error) {
+        console.error('Failed to get Apache port from config, using default:', error);
+      }
+      
       // Update server root and document root
       httpdConf = httpdConf.replace(/ServerRoot ".*"/g, `ServerRoot "${apacheRoot.replace(/\\/g, '/')}"`);
       httpdConf = httpdConf.replace(/DocumentRoot ".*"/g, 'DocumentRoot "C:/sonna/www"');
       httpdConf = httpdConf.replace(/<Directory ".*">/g, '<Directory "C:/sonna/www">');
+      
+      // Update port
+      httpdConf = httpdConf.replace(/Listen\s+\d+/g, `Listen ${port}`);
       
       // Enable common modules
       httpdConf = httpdConf.replace(/#LoadModule rewrite_module/g, 'LoadModule rewrite_module');
@@ -97,7 +112,9 @@ export class ServiceConfigurator {
       
       // Set ServerName to avoid warnings
       if (!httpdConf.includes('ServerName')) {
-        httpdConf += '\nServerName localhost:80\n';
+        httpdConf += `\nServerName localhost:${port}\n`;
+      } else {
+        httpdConf = httpdConf.replace(/ServerName\s+localhost:\d+/g, `ServerName localhost:${port}`);
       }
       
       // Enable .htaccess
@@ -110,11 +127,23 @@ export class ServiceConfigurator {
   private async setupMySQL(extractPath: string): Promise<void> {
     const myIniPath = path.join(extractPath, 'my.ini');
     
+    // Get port from config
+    let port = 3306;
+    try {
+      const configManager = new (require('./config-manager').ConfigManager)();
+      const configResult = await configManager.getConfig();
+      if (configResult.success && configResult.config && configResult.config.services.mysql) {
+        port = configResult.config.services.mysql.port || 3306;
+      }
+    } catch (error) {
+      console.error('Failed to get MySQL port from config, using default:', error);
+    }
+    
     // Create basic MySQL configuration
     const myIniContent = `[mysqld]
 basedir="${extractPath.replace(/\\/g, '/')}"
 datadir="${extractPath.replace(/\\/g, '/')}/data"
-port=3306
+port=${port}
 socket=/tmp/mysql.sock
 
 # InnoDB Settings
@@ -139,7 +168,7 @@ default-character-set=utf8mb4
 
 [client]
 default-character-set=utf8mb4
-port=3306
+port=${port}
 socket=/tmp/mysql.sock`;
 
     fs.writeFileSync(myIniPath, myIniContent);
@@ -160,12 +189,24 @@ socket=/tmp/mysql.sock`;
   private async setupNginx(extractPath: string): Promise<void> {
     const nginxConfPath = path.join(extractPath, 'conf', 'nginx.conf');
     
+    // Get port from config
+    let port = 8080;
+    try {
+      const configManager = new (require('./config-manager').ConfigManager)();
+      const configResult = await configManager.getConfig();
+      if (configResult.success && configResult.config && configResult.config.services.nginx) {
+        port = configResult.config.services.nginx.port || 8080;
+      }
+    } catch (error) {
+      console.error('Failed to get Nginx port from config, using default:', error);
+    }
+    
     if (fs.existsSync(nginxConfPath)) {
       let nginxConf = fs.readFileSync(nginxConfPath, 'utf8');
       
       // Update root directory
       nginxConf = nginxConf.replace(/root\s+html;/g, 'root C:/sonna/www;');
-      nginxConf = nginxConf.replace(/listen\s+80;/g, 'listen 8080;');
+      nginxConf = nginxConf.replace(/listen\s+\d+;/g, `listen ${port};`);
       
       // Add PHP support
       const phpLocation = `
@@ -195,9 +236,21 @@ socket=/tmp/mysql.sock`;
   private async setupRedis(extractPath: string): Promise<void> {
     const redisConfPath = path.join(extractPath, 'redis.conf');
     
+    // Get port from config
+    let port = 6379;
+    try {
+      const configManager = new (require('./config-manager').ConfigManager)();
+      const configResult = await configManager.getConfig();
+      if (configResult.success && configResult.config && configResult.config.services.redis) {
+        port = configResult.config.services.redis.port || 6379;
+      }
+    } catch (error) {
+      console.error('Failed to get Redis port from config, using default:', error);
+    }
+    
     // Create basic Redis configuration
     const redisConfContent = `# Redis Configuration for Sonna
-port 6379
+port ${port}
 bind 127.0.0.1
 dir "${extractPath.replace(/\\/g, '/')}"
 

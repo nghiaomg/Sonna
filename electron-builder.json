@@ -1,14 +1,14 @@
 {
   "appId": "com.nghiaomg.sonna",
   "productName": "Sonna",
-  "copyright": "Copyright © 2025 nghiaomg",
+  "copyright": "Copyright © 2024 nghiaomg",
   "directories": {
     "output": "release",
     "buildResources": "build"
   },
   "files": [
     "dist/**/*",
-    "electron/**/*"
+    "dist-electron/**/*"
   ],
   "extraResources": [
     {

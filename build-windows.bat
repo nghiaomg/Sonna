@@ -23,6 +23,7 @@ if %errorlevel% neq 0 (
 echo [1/8] Creating build directories...
 if not exist "build\icons" mkdir build\icons
 if not exist "release" mkdir release
+if not exist "dist-electron" mkdir dist-electron
 
 echo [2/8] Copying icon files...
 copy "public\logo.ico" "build\icons\icon.ico" >nul

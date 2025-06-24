@@ -7,7 +7,7 @@ import { LanguageProvider } from './lib/language-context'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <LanguageProvider>
-      <App />
+    <App />
     </LanguageProvider>
   </StrictMode>,
 )

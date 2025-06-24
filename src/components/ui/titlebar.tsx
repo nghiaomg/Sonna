@@ -55,7 +55,17 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
 
   const handleClose = async () => {
     if (window.electronAPI) {
-      await window.electronAPI.closeWindow();
+      // First check if any services are running
+      const servicesStatus = await window.electronAPI.getServicesStatus();
+      const hasRunningServices = Object.values(servicesStatus).some((service: any) => service.running);
+      
+      if (hasRunningServices) {
+        // If services are running, hide to tray instead of closing
+        await window.electronAPI.hideToTray();
+      } else {
+        // If no services are running, quit the app
+        await window.electronAPI.quitApp();
+      }
     }
   };
 
@@ -113,11 +123,19 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-12 rounded-none hover:bg-destructive hover:text-destructive-foreground no-drag p-0 flex items-center"
+            className="h-8 w-12 rounded-none hover:bg-destructive hover:text-destructive-foreground no-drag p-0"
+            onClick={handleClose}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-6 rounded-none hover:bg-muted no-drag p-0 absolute right-12 top-0"
             onClick={() => setShowCloseMenu(!showCloseMenu)}
           >
-            <ChevronDown className="w-3 h-3 mr-1" />
-            <X className="w-4 h-4" />
+            <ChevronDown className="w-3 h-3" />
           </Button>
           
           {showCloseMenu && (

@@ -66,6 +66,24 @@ npm run dev
 npm run build
 ```
 
+### Development
+For development, you can use the following commands:
+```bash
+# Install dependencies
+pnpm install
+
+# Run development mode (with hot reload)
+pnpm dev
+# or use the batch file
+dev.bat
+
+# Build for production
+pnpm build
+
+# Create Windows installer
+pnpm dist:win
+```
+
 ---
 
 ## 🏃‍♂️ Getting Started

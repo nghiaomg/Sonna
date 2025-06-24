@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, shell } from 'electron';
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -10,6 +10,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Project management
   getProjects: () => ipcRenderer.invoke('get-projects'),
+  openFolder: (path: string) => shell.openPath(path),
+  openExternal: (url: string) => shell.openExternal(url),
+  
+  // Path management
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
+  changeInstallationPath: (newPath: string, moveFiles: boolean) => 
+    ipcRenderer.invoke('change-installation-path', newPath, moveFiles),
   
   // Virtual host management
   createVirtualHost: (config: any) => ipcRenderer.invoke('create-virtual-host', config),
@@ -25,6 +32,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Setup and Configuration
   initializeSonna: () => ipcRenderer.invoke('initialize-sonna'),
   getSonnaConfig: () => ipcRenderer.invoke('get-sonna-config'),
+  updateConfig: (config: any) => ipcRenderer.invoke('update-config', config),
   downloadService: (serviceName: string) => ipcRenderer.invoke('download-service', serviceName),
   onDownloadProgress: (callback: any) => ipcRenderer.on('download-progress', callback),
   removeDownloadProgressListener: (callback: any) => ipcRenderer.removeListener('download-progress', callback),
@@ -45,6 +53,10 @@ declare global {
       startService: (serviceName: string) => Promise<any>;
       stopService: (serviceName: string) => Promise<any>;
       getProjects: () => Promise<any>;
+      openFolder: (path: string) => Promise<string>;
+      openExternal: (url: string) => Promise<void>;
+      selectFolder: () => Promise<string>;
+      changeInstallationPath: (newPath: string, moveFiles: boolean) => Promise<any>;
       createVirtualHost: (config: any) => Promise<any>;
       minimizeWindow: () => Promise<void>;
       maximizeWindow: () => Promise<void>;
@@ -54,6 +66,7 @@ declare global {
       hideToTray: () => Promise<void>;
       initializeSonna: () => Promise<any>;
       getSonnaConfig: () => Promise<any>;
+      updateConfig: (config: any) => Promise<any>;
       downloadService: (serviceName: string) => Promise<any>;
       onDownloadProgress: (callback: any) => void;
       removeDownloadProgressListener: (callback: any) => void;

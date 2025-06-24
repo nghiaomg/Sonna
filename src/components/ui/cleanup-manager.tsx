@@ -158,17 +158,17 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
                       disabled={isDeleting}
                       className="flex items-center gap-2 text-destructive hover:text-destructive"
                     >
-                                              {isDeleting ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
                             {t.deleting}
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="w-3 h-3" />
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3 h-3" />
                             {t.delete}
-                          </>
-                        )}
+                        </>
+                      )}
                     </Button>
                   </div>
                 );

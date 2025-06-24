@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
@@ -9,6 +9,29 @@ import { ServiceConfigurator } from './utils/service-configurator';
 import { ConfigManager } from './utils/config-manager';
 
 const isDev = process.env.NODE_ENV === 'development';
+let mainWindow: BrowserWindow;
+let tray: Tray | null = null;
+let isQuitting = false;
+
+// Ensure single instance
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  console.log('Another instance is already running. Quitting...');
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, we should focus our window
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  // Continue with your app initialization
+  // ... existing code ...
+}
 
 function getIconPath() {
   if (isDev) {
@@ -61,10 +84,6 @@ function getIconPath() {
   // Fallback - return default path
   return path.join(__dirname, '../build/icons/icon.ico');
 }
-
-let mainWindow: BrowserWindow;
-let tray: Tray | null = null;
-let isQuitting = false;
 
 // Initialize utility managers
 const serviceManager = new ServiceManager();
@@ -380,8 +399,6 @@ ipcMain.handle('get-services-status', async () => {
   return await serviceManager.getServicesStatus();
 });
 
-
-
 ipcMain.handle('start-service', async (event, serviceName: string) => {
   const result = await serviceManager.startService(serviceName);
   // Update tray menu after service state change
@@ -397,7 +414,61 @@ ipcMain.handle('stop-service', async (event, serviceName: string) => {
 });
 
 ipcMain.handle('get-projects', async () => {
-  return [];
+  try {
+    const configResult = await configManager.getConfig();
+    if (!configResult.success || !configResult.config) {
+      return { success: false, projects: [], message: 'Config file not found' };
+    }
+    
+    const wwwPath = configResult.config.wwwPath || 'C:/sonna/www';
+    
+    if (!fs.existsSync(wwwPath)) {
+      fs.mkdirSync(wwwPath, { recursive: true });
+      return { success: true, projects: [] };
+    }
+    
+    // Read all directories in www folder
+    const entries = fs.readdirSync(wwwPath, { withFileTypes: true });
+    const projects = entries
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map(dir => {
+        const projectPath = path.join(wwwPath, dir.name);
+        let projectType = 'generic';
+        let hasIndex = false;
+        
+        // Try to detect project type
+        if (fs.existsSync(path.join(projectPath, 'wp-config.php'))) {
+          projectType = 'wordpress';
+        } else if (fs.existsSync(path.join(projectPath, 'artisan'))) {
+          projectType = 'laravel';
+        } else if (fs.existsSync(path.join(projectPath, 'composer.json'))) {
+          projectType = 'php';
+        } else if (fs.existsSync(path.join(projectPath, 'package.json'))) {
+          projectType = 'node';
+        }
+        
+        // Check if it has an index file
+        const indexFiles = ['index.php', 'index.html', 'index.htm'];
+        hasIndex = indexFiles.some(file => fs.existsSync(path.join(projectPath, file)));
+        
+        return {
+          name: dir.name,
+          path: projectPath,
+          url: `http://${dir.name}.test`,
+          type: projectType,
+          hasIndex
+        };
+      });
+    
+    return { 
+      success: true, 
+      projects,
+      wwwPath
+    };
+  } catch (error) {
+    console.error('Failed to get projects:', error);
+    return { success: false, projects: [], message: `Failed to get projects: ${error}` };
+  }
 });
 
 ipcMain.handle('create-virtual-host', async (event, config: any) => {
@@ -531,6 +602,10 @@ ipcMain.handle('get-sonna-config', async () => {
   return await configManager.getConfig();
 });
 
+ipcMain.handle('update-config', async (event, config: any) => {
+  return await configManager.updateConfig(config);
+});
+
 ipcMain.handle('download-service', async (event, serviceName: string) => {
   try {
     const configResult = await configManager.getConfig();
@@ -614,5 +689,125 @@ ipcMain.handle('download-service', async (event, serviceName: string) => {
     return { success: false, message: `Failed to install: ${error}` };
   }
 });
+
+// Add a handler for selecting folders
+ipcMain.handle('select-folder', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+    title: 'Select Installation Folder'
+  });
+  
+  if (result.canceled) {
+    return '';
+  }
+  
+  return result.filePaths[0];
+});
+
+// Add a handler for changing the installation path
+ipcMain.handle('change-installation-path', async (event, newPath: string, moveFiles: boolean) => {
+  try {
+    const configResult = await configManager.getConfig();
+    if (!configResult.success || !configResult.config) {
+      return { success: false, message: 'Config file not found' };
+    }
+    
+    const currentPath = configResult.config.installPath;
+    const wwwPath = configResult.config.wwwPath;
+    
+    // Create new directories
+    if (!fs.existsSync(newPath)) {
+      fs.mkdirSync(newPath, { recursive: true });
+    }
+    
+    const newWwwPath = path.join(newPath, 'www');
+    if (!fs.existsSync(newWwwPath)) {
+      fs.mkdirSync(newWwwPath, { recursive: true });
+    }
+    
+    // If moveFiles is true, copy all files from old path to new path
+    if (moveFiles && fs.existsSync(currentPath)) {
+      // Copy www directory
+      if (fs.existsSync(wwwPath)) {
+        await copyDirectory(wwwPath, newWwwPath);
+      }
+      
+      // Copy other important directories
+      const dirsToMove = ['applications', 'downloads', 'config.json'];
+      for (const dir of dirsToMove) {
+        const srcPath = path.join(currentPath, dir);
+        const destPath = path.join(newPath, dir);
+        
+        if (fs.existsSync(srcPath)) {
+          if (fs.lstatSync(srcPath).isDirectory()) {
+            await copyDirectory(srcPath, destPath);
+          } else {
+            fs.copyFileSync(srcPath, destPath);
+          }
+        }
+      }
+      
+      // Delete old directories if copy was successful
+      try {
+        if (fs.existsSync(currentPath)) {
+          await downloadManager.deleteDirectory(currentPath);
+        }
+      } catch (error) {
+        console.error('Failed to delete old directory:', error);
+        // Continue with the path change even if deletion fails
+      }
+    }
+    
+    // Update config with new paths
+    const updatedConfig = {
+      ...configResult.config,
+      installPath: newPath,
+      wwwPath: newWwwPath
+    };
+    
+    // Update service paths
+    for (const [serviceName, service] of Object.entries(updatedConfig.services)) {
+      if (service.extractPath && service.extractPath.startsWith(currentPath)) {
+        service.extractPath = service.extractPath.replace(currentPath, newPath);
+      }
+    }
+    
+    // Save updated config
+    await configManager.updateConfig(updatedConfig);
+    
+    return { 
+      success: true, 
+      message: 'Installation path updated successfully',
+      newPath,
+      newWwwPath
+    };
+  } catch (error) {
+    console.error('Failed to change installation path:', error);
+    return { success: false, message: `Failed to change installation path: ${error}` };
+  }
+});
+
+// Helper function to copy a directory recursively
+async function copyDirectory(src: string, dest: string): Promise<void> {
+  // Create destination directory
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+  
+  // Read source directory
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  
+  // Copy each entry
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    
+    if (entry.isDirectory()) {
+      await copyDirectory(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
  
