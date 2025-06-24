@@ -9,6 +9,7 @@ import { Settings } from '@/components/ui/settings';
 import { Server, Database, Globe, Code, Play, Square, Settings as SettingsIcon, Moon, Sun, Download, Trash2 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { DEFAULT_CONFIG } from '@/config/default-config';
+import { getLogoPath } from '@/lib/asset-helper';
 
 interface Service {
   name: string;
@@ -218,7 +219,7 @@ function App() {
       <header className="border-b bg-card">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-4">
-            <img src="/logo.png" alt="Sonna" className="w-8 h-8" />
+            <img src={getLogoPath()} alt="Sonna" className="w-8 h-8" />
             <h1 className="text-xl font-bold">{t.appTitle}</h1>
             <span className="text-sm text-muted-foreground">{t.appSubtitle}</span>
           </div>

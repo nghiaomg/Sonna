@@ -13,6 +13,8 @@ declare global {
       maximizeWindow: () => Promise<void>;
       closeWindow: () => Promise<void>;
       isWindowMaximized: () => Promise<boolean>;
+      hideToTray: () => Promise<void>;
+      quitApp: () => Promise<void>;
       initializeSonna: () => Promise<any>;
       getSonnaConfig: () => Promise<any>;
       downloadService: (serviceName: string) => Promise<any>;

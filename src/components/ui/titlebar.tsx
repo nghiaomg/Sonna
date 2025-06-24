@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Minus, Square, X, Copy, ChevronDown, ArrowDown, Power } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/language-context';
+import { getLogoPath } from '@/lib/asset-helper';
 
 interface TitlebarProps {
   title?: string;
@@ -80,7 +81,7 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
     )}>
       {/* Left side - Logo and title */}
       <div className="flex items-center px-4 gap-2">
-        <img src="/logo.png" alt="Sonna" className="w-4 h-4" />
+        <img src={getLogoPath()} alt="Sonna" className="w-4 h-4" />
         <span className="text-sm font-medium text-foreground">{title}</span>
       </div>
 
@@ -127,14 +128,14 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
                   onClick={handleHideToTray}
                 >
                   <ArrowDown className="w-4 h-4" />
-                  {t('hideToTray')}
+                  {t.hideToTray}
                 </button>
                 <button
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-destructive hover:text-destructive-foreground text-left"
                   onClick={handleQuitApp}
                 >
                   <Power className="w-4 h-4" />
-                  {t('quitApp')}
+                  {t.quitApp}
                 </button>
               </div>
             </div>

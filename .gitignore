@@ -45,3 +45,6 @@ win32/
 
 # Build scripts output
 build-log.txt
+
+
+build-windows.bat

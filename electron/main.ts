@@ -3,14 +3,64 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
 import * as http from 'http';
-import { 
-  ServiceManager, 
-  DownloadManager, 
-  ServiceConfigurator, 
-  ConfigManager 
-} from './utils';
+import { ServiceManager } from './utils/service-manager';
+import { DownloadManager } from './utils/download-manager';
+import { ServiceConfigurator } from './utils/service-configurator';
+import { ConfigManager } from './utils/config-manager';
 
 const isDev = process.env.NODE_ENV === 'development';
+
+function getIconPath() {
+  if (isDev) {
+    // In development, try multiple paths
+    const devPaths = [
+      path.join(__dirname, '../public/logo.ico'),
+      path.join(__dirname, '../build/icons/icon.ico'),
+      path.join(process.cwd(), 'public/logo.ico'),
+      path.join(process.cwd(), 'build/icons/icon.ico')
+    ];
+    
+    for (const iconPath of devPaths) {
+      if (fs.existsSync(iconPath)) {
+        return iconPath;
+      }
+    }
+  } else {
+    // In production, try multiple paths with priority
+    const appPath = app.getAppPath();
+    const appDir = path.dirname(appPath);
+    
+    const prodPaths = [
+      // Extra resources directory (highest priority)
+      path.join(process.resourcesPath, 'icons/icon.ico'),
+      
+      // Public directory in resources
+      path.join(process.resourcesPath, 'public/logo.ico'),
+      
+      // App root (where we copied files)
+      path.join(appDir, 'logo.ico'),
+      
+      // Resources directory
+      path.join(process.resourcesPath, 'logo.ico'),
+      
+      // Other possible locations
+      path.join(__dirname, '../logo.ico'),
+      path.join(__dirname, '../dist/logo.ico'),
+      path.join(__dirname, '../build/icons/icon.ico'),
+      path.join(__dirname, '../public/logo.ico')
+    ];
+    
+    for (const iconPath of prodPaths) {
+      if (fs.existsSync(iconPath)) {
+        console.log('Found icon at:', iconPath);
+        return iconPath;
+      }
+    }
+  }
+  
+  // Fallback - return default path
+  return path.join(__dirname, '../build/icons/icon.ico');
+}
 
 let mainWindow: BrowserWindow;
 let tray: Tray | null = null;
@@ -24,9 +74,19 @@ const downloadManager = new DownloadManager();
 
 function createTray() {
   // Create tray icon
-  const iconPath = path.join(__dirname, '../public/logo.ico');
-  const trayIcon = nativeImage.createFromPath(iconPath);
-  tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
+  const iconPath = getIconPath();
+  console.log('Using icon path for tray:', iconPath);
+  
+  // Create native image with proper scaling
+  let trayIcon = nativeImage.createFromPath(iconPath);
+  
+  // Ensure icon is visible by setting proper size
+  if (process.platform === 'win32') {
+    // Windows requires specific sizes for tray icons
+    trayIcon = trayIcon.resize({ width: 16, height: 16 });
+  }
+  
+  tray = new Tray(trayIcon);
   
   // Update tray context menu with service status
   updateTrayMenu();
@@ -169,7 +229,47 @@ async function updateTrayMenu() {
   }
 }
 
+function copyAssetsToAppRoot() {
+  try {
+    // In production, copy logo files to app root for easy access
+    if (!isDev) {
+      const appPath = app.getAppPath();
+      const appDir = path.dirname(appPath);
+      
+      // Source paths
+      const logoSrcPath = path.join(__dirname, '../dist/logo.png');
+      const iconSrcPath = path.join(__dirname, '../dist/logo.ico');
+      
+      // Destination paths (app root)
+      const logoDestPath = path.join(appDir, 'logo.png');
+      const iconDestPath = path.join(appDir, 'logo.ico');
+      
+      // Copy files if they exist
+      if (fs.existsSync(logoSrcPath)) {
+        fs.copyFileSync(logoSrcPath, logoDestPath);
+        console.log('Copied logo.png to app root');
+      }
+      
+      if (fs.existsSync(iconSrcPath)) {
+        fs.copyFileSync(iconSrcPath, iconDestPath);
+        console.log('Copied logo.ico to app root');
+      }
+    }
+  } catch (error) {
+    console.error('Failed to copy assets to app root:', error);
+  }
+}
+
 function createWindow() {
+  // Get icon path before creating window
+  const iconPath = getIconPath();
+  console.log('Using icon path for window:', iconPath);
+  
+  // Set app icon for Windows taskbar
+  if (process.platform === 'win32') {
+    app.setAppUserModelId(process.execPath);
+  }
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -182,7 +282,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
     },
-    icon: path.join(__dirname, '../public/logo.ico'),
+    icon: iconPath,
     show: false,
   });
 
@@ -218,7 +318,41 @@ function createWindow() {
   });
 }
 
+// Set app icon early
+function setAppIcon() {
+  if (process.platform === 'win32') {
+    const iconPath = getIconPath();
+    try {
+      // Set app user model ID for Windows - use executable path for proper association
+      app.setAppUserModelId(process.execPath);
+      
+      // Set taskbar icon
+      if (!isDev) {
+        app.on('ready', () => {
+          try {
+            // Force refresh icon cache
+            const { execSync } = require('child_process');
+            execSync(`ie4uinit.exe -show`);
+          } catch (e) {
+            console.log('Could not refresh icon cache:', e);
+          }
+        });
+      }
+      
+      console.log('App icon set successfully');
+    } catch (error) {
+      console.error('Failed to set app icon:', error);
+    }
+  }
+}
+
+// Set icon early in the process
+setAppIcon();
+
 app.whenReady().then(() => {
+  // Copy assets to app root for production builds
+  copyAssetsToAppRoot();
+  
   createWindow();
   createTray();
 

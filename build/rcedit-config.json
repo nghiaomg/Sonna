@@ -1,0 +1,12 @@
+{
+  "version-string": {
+    "CompanyName": "nghiaomg",
+    "FileDescription": "Sonna - Modern Local Development Environment",
+    "LegalCopyright": "Copyright © 2024 nghiaomg",
+    "ProductName": "Sonna"
+  },
+  "file-version": "1.0.0",
+  "product-version": "1.0.0",
+  "icon": "../build/icons/icon.ico",
+  "requested-execution-level": "asInvoker"
+} 

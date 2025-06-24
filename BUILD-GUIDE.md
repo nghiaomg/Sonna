@@ -1,286 +1,134 @@
-# 🔨 Hướng Dẫn Build Sonna cho Windows
+# Sonna - Windows Build Guide
 
-## 🎯 Tổng Quan
+This guide explains how to build Sonna from source code for Windows systems.
 
-Hướng dẫn này sẽ giúp bạn build ứng dụng Sonna thành file cài đặt Windows (.exe) và các format khác.
+## Prerequisites
 
-## 🛠️ Yêu Cầu Hệ Thống
+- **Node.js** (v16 or newer)
+- **npm** (included with Node.js)
+- **Git** (for cloning the repository)
+- **Windows 10/11** (for building Windows installers)
 
-### Phần Mềm Cần Thiết
-- **Node.js** v16+ (khuyến nghị v18+)
-- **npm** v8+
-- **Git** (để clone source code)
-- **Windows 10/11** hoặc **Windows Server 2016+**
+## Quick Build
 
-### Kiểm Tra Phiên Bản
+For a quick build with default settings, run:
+
 ```bash
-node --version   # v18.x.x hoặc cao hơn
-npm --version    # v8.x.x hoặc cao hơn
-```
+# Clone the repository
+git clone https://github.com/nghiaomg/sonna.git
+cd sonna
 
-## 📦 Các Loại Build
-
-Sonna hỗ trợ nhiều format build cho Windows:
-
-| Format | Mô Tả | Lệnh Build |
-|--------|-------|------------|
-| **NSIS Installer** | File .exe cài đặt chuẩn Windows | `npm run dist:win` |
-| **Portable** | File .exe chạy độc lập, không cần cài đặt | `npm run dist:portable` |
-| **ZIP Archive** | File nén chứa app, giải nén và chạy | `npm run dist:win` |
-| **64-bit** | Build cho Windows 64-bit | `npm run dist:win64` |
-| **32-bit** | Build cho Windows 32-bit | `npm run dist:win32` |
-
-## 🚀 Cách Build
-
-### Phương Pháp 1: Build Script Tự Động (Khuyến nghị)
-```bash
-# Chạy script build tự động
-.\build-windows.bat
-```
-
-### Phương Pháp 2: Build Thủ Công
-```bash
-# 1. Cài đặt dependencies
+# Install dependencies and build
 npm install
-
-# 2. Build source code
-npm run build
-
-# 3. Tạo installer Windows
-npm run dist:win
+npm run build:win
 ```
 
-### Phương Pháp 3: Build Từng Loại
+The output files will be in the `release` directory.
+
+## Build Options
+
+### One-Click Build
+
+The easiest way to build Sonna is using the included batch script:
+
 ```bash
-# Build 64-bit installer
-npm run dist:win64
-
-# Build 32-bit installer  
-npm run dist:win32
-
-# Build portable version
-npm run dist:portable
-
-# Build tất cả
-npm run dist
+build-windows.bat
 ```
 
-## 📁 Cấu Trúc Output
+This script:
+1. Creates necessary build directories
+2. Copies icon files to the build directory
+3. Installs dependencies
+4. Builds the application
+5. Creates Windows installers
+6. Applies icon fixes for proper Windows integration
 
-Sau khi build thành công, files sẽ được tạo trong thư mục `release/`:
+### Manual Build Steps
 
-```
-release/
-├── Sonna-1.0.0-x64.exe              # Windows 64-bit installer
-├── Sonna-1.0.0-ia32.exe             # Windows 32-bit installer
-├── Sonna-1.0.0-portable.exe         # Portable version
-├── Sonna-1.0.0-x64.zip              # ZIP archive 64-bit
-├── Sonna-1.0.0-ia32.zip             # ZIP archive 32-bit
-└── latest.yml                       # Update metadata
-```
+If you prefer to build manually:
 
-## ⚙️ Cấu Hình Build
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Package.json Scripts
-```json
-{
-  "scripts": {
-    "build": "tsc -p electron && vite build",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:win64": "npm run build && electron-builder --win --x64",
-    "dist:win32": "npm run build && electron-builder --win --ia32",
-    "dist:portable": "npm run build && electron-builder --win portable",
-    "build:win": "npm run build && npm run dist:win"
-  }
-}
-```
+2. **Create Windows icon files**
+   ```bash
+   npm run create-icons
+   ```
 
-### Electron-Builder Configuration
-```json
-{
-  "build": {
-    "appId": "com.sonna.app",
-    "productName": "Sonna",
-    "description": "Modern Local Development Environment for Windows",
-    "win": {
-      "target": ["nsis", "portable", "zip"],
-      "icon": "public/logo.ico",
-      "requestedExecutionLevel": "requireAdministrator"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
-  }
-}
-```
+3. **Build the application**
+   ```bash
+   npm run build
+   ```
 
-## 🎨 Customization
+4. **Build Windows installer**
+   ```bash
+   npm run dist:win
+   ```
 
-### Thay Đổi Icon
-1. Thay file `public/logo.ico` (256x256px, .ico format)
-2. Rebuild: `npm run dist:win`
+5. **Apply icon fixes** (important for proper Windows integration)
+   ```bash
+   npm run fix-icons
+   ```
 
-### Cập Nhật Thông Tin App
-```json
-// package.json
-{
-  "name": "sonna",
-  "version": "1.0.0",
-  "description": "Modern Local Development Environment",
-  "build": {
-    "productName": "Sonna",
-    "copyright": "Copyright © 2024 nghiaomg"
-  }
-}
-```
+## Output Files
 
-### Custom Installer Script
-Chỉnh sửa `build/installer.nsh` để:
-- Tạo thêm thư mục
-- Set registry keys
-- Add custom installation steps
-- Configure uninstaller behavior
+After building, you'll find these files in the `release` directory:
 
-## 🚨 Troubleshooting
+- **Sonna-0.0.1-x64.exe** - Windows installer (64-bit)
+- **Sonna-Portable-0.0.1.exe** - Portable version (no installation required)
+- **Sonna-0.0.1-x64.zip** - ZIP archive (64-bit)
 
-### Lỗi Thường Gặp
+## Troubleshooting
 
-#### 1. "electron-builder not found"
-```bash
-# Cài đặt lại dependencies
-npm install
-# Hoặc cài đặt global
-npm install -g electron-builder
-```
+### Icon Issues
 
-#### 2. "Icon file not found"
-```bash
-# Kiểm tra file icon tồn tại
-ls public/logo.ico
-# Hoặc copy icon mẫu
-cp public/vite.svg public/logo.ico
-```
+If the application icon doesn't appear correctly in Windows:
 
-#### 3. "Permission denied"
-```bash
-# Chạy với quyền Administrator
-# Right-click PowerShell → "Run as Administrator"
-npm run dist:win
-```
+1. Make sure the build process completed successfully
+2. Try clearing the Windows icon cache:
+   ```
+   ie4uinit.exe -show
+   ```
+3. Ensure `public/logo.png` and `public/logo.ico` exist and are valid image files
+4. Check that the `build/icons/icon.ico` file was created correctly
 
-#### 4. "Build fails on dependencies"
-```bash
-# Clear cache và reinstall
-npm cache clean --force
-rm -rf node_modules package-lock.json
-npm install
-```
+### Build Errors
 
-### Debug Build Process
-```bash
-# Build với verbose output
-DEBUG=electron-builder npm run dist:win
+- **"electron-builder command not found"** - Run `npm install -g electron-builder` or use `npx electron-builder`
+- **"Failed to create ICO file"** - Make sure the source PNG file exists and is valid
+- **"Error: Cannot find module"** - Run `npm install` to ensure all dependencies are installed
 
-# Kiểm tra electron-builder config
-npx electron-builder --help
-```
+## Advanced Configuration
 
-## 📋 Build Checklist
+### Customizing the Build
 
-### Trước Khi Build
-- [ ] Code đã được test và hoạt động tốt
-- [ ] Version trong `package.json` đã cập nhật
-- [ ] Icon và assets đã được chuẩn bị
-- [ ] Dependencies đã được cài đặt đầy đủ
+You can customize the build process by editing:
 
-### Sau Khi Build
-- [ ] Test installer trên máy clean Windows
-- [ ] Kiểm tra file size hợp lý
-- [ ] Test uninstaller hoạt động đúng
-- [ ] Verify digital signature (nếu có)
+- **electron-builder.json** - Controls packaging options, installer settings, etc.
+- **vite.config.ts** - Configure the Vite build process
+- **build-windows.bat** - Modify the build script steps
 
-## 🎯 Production Build
+### Icon Requirements
 
-### Tối Ưu Cho Production
-```bash
-# Set NODE_ENV cho production
-set NODE_ENV=production
-npm run dist:win
+Windows requires icons in multiple sizes for proper display:
 
-# Hoặc build với optimization
-npm run build && npm run dist:win -- --publish=never
-```
+- Taskbar: 16x16, 32x32
+- Alt+Tab switcher: 32x32, 48x48
+- Desktop shortcuts: 48x48
+- Start menu: 48x48
+- File explorer: 16x16, 32x32, 48x48, 256x256
 
-### Code Signing (Tùy chọn)
-```json
-{
-  "build": {
-    "win": {
-      "certificateFile": "path/to/certificate.p12",
-      "certificatePassword": "password",
-      "signtool": "signtool.exe",
-      "signDlls": true
-    }
-  }
-}
-```
+The build process creates all these sizes automatically from `public/logo.png`.
 
-## 📈 Performance Tips
+## System Tray Integration
 
-### Giảm Size Build
-1. **Exclude không cần thiết:**
-```json
-{
-  "files": [
-    "!**/*.ts",
-    "!src/",
-    "!electron/*.ts",
-    "!node_modules/.cache"
-  ]
-}
-```
+Sonna includes system tray functionality. When minimized, it will:
 
-2. **Compress executable:**
-```json
-{
-  "nsis": {
-    "differentialPackage": false
-  },
-  "compression": "maximum"
-}
-```
+1. Hide the main window
+2. Show a tray icon in the system tray
+3. Display a balloon notification on first minimize
+4. Provide a context menu with service controls
 
-### Tăng Tốc Build
-1. **Sử dụng cache:**
-```bash
-# Enable electron cache
-export ELECTRON_CACHE=/tmp/electron-cache
-npm run dist:win
-```
-
-2. **Parallel builds:**
-```json
-{
-  "build": {
-    "buildDependenciesFromSource": false,
-    "nodeGypRebuild": false
-  }
-}
-```
-
----
-
-## 🏆 Kết Luận
-
-Với hướng dẫn này, bạn có thể:
-- ✅ Build Sonna thành installer Windows professional
-- ✅ Tạo multiple formats (installer, portable, zip)
-- ✅ Customize installer theo nhu cầu
-- ✅ Troubleshoot các vấn đề thường gặp
-- ✅ Optimize cho production release
-
-**Happy Building! 🚀** 
+To exit the application completely, use the "Quit" option in the tray menu or titlebar dropdown. 
