@@ -1,49 +1,49 @@
-# 🧰 Sonna – Môi Trường Phát Triển Web Hiện Đại Cho Windows
+# 🧰 Sonna – Modern Local Development Environment for Windows
 
-**Sonna** là một công cụ quản lý môi trường phát triển web cục bộ hiện đại dành cho Windows, được thiết kế để thay thế Laragon với trọng tâm là trải nghiệm người dùng, hiệu suất và thiết kế hiện đại.
+**Sonna** is a modern local web development environment manager for Windows, designed as a modern alternative to Laragon with a focus on user experience, performance, and contemporary design.
 
-> Tạo – Quản lý – Phát triển dự án web cục bộ với giao diện đẹp, hiện đại và dễ sử dụng.
+> Create – Manage – Develop local web projects with a beautiful, modern, and easy-to-use interface.
 
 ![Sonna Screenshot](public/screenshot.png)
 
-## 🚀 Tính Năng Chính
+## 🚀 Key Features
 
-- 🧩 **Quản lý Dịch vụ** - Điều khiển Apache, Nginx, PHP, MySQL, Redis, Node.js, và nhiều dịch vụ khác
-- 🌐 **Quản lý Virtual Host** - Tạo và quản lý dễ dàng các tên miền .test, .local
-- 🗂️ **Tự động Phát hiện Dự án** - Tự động tìm và quản lý các dự án web cục bộ
+- 🧩 **Service Management** - Control Apache, Nginx, PHP, MySQL, Redis, Node.js, and more
+- 🌐 **Virtual Host Management** - Easily create and manage .test and .local domains
+- 🗂️ **Project Auto-Detection** - Automatically discover and manage local web projects
 - 🖥️ **Integrated Terminal** - Built-in terminal for development tasks
-- ⚙️ **Cấu hình Trực quan** - Cấu hình PHP, Apache, Nginx thông qua giao diện đồ họa
-- 🌙 **Giao diện Đẹp** - Giao diện hiện đại với chế độ Sáng/Tối
-- 🔌 **Có thể mở rộng** - Hỗ trợ plugin/extension (đang phát triển)
+- ⚙️ **Visual Configuration** - Configure PHP, Apache, Nginx through a graphical interface
+- 🌙 **Beautiful Interface** - Modern UI with Light/Dark modes
+- 🔌 **Extensible** - Plugin/extension support (in development)
 
-## 🎯 Lợi Ích Khi Sử Dụng Sonna
+## 🎯 Benefits of Using Sonna
 
-### Giải pháp Thay thế Hiện đại cho Laragon
-Sonna mang đến:
-- **Giao diện người dùng hiện đại** với thiết kế đáp ứng
-- **Hiệu suất tốt hơn** với quản lý dịch vụ được tối ưu hóa
-- **Bảo mật nâng cao** với cách ly quy trình phù hợp
-- **Tương thích đa phiên bản** hỗ trợ các phiên bản Windows cũ hơn
+### Modern Alternative to Laragon
+Sonna delivers:
+- **Modern user interface** with responsive design
+- **Better performance** with optimized service management
+- **Enhanced security** with proper process isolation
+- **Multi-version compatibility** supporting older Windows versions
 
-### Hoàn hảo cho Lập trình viên Muốn:
-- ✅ **Thiết lập nhanh chóng** - Khởi chạy môi trường phát triển trong vài phút
-- ✅ **Điều khiển trực quan** - Quản lý dịch vụ mà không cần dòng lệnh
-- ✅ **Tổ chức dự án** - Giữ tất cả dự án cục bộ được tổ chức gọn gàng
-- ✅ **Hiệu suất cao** - Quản lý dịch vụ nhẹ và nhanh
-- ✅ **Đáng tin cậy** - Xử lý dịch vụ ổn định với khả năng phục hồi lỗi
+### Perfect for Developers Who Want:
+- ✅ **Quick Setup** - Launch a development environment in minutes
+- ✅ **Visual Control** - Manage services without command line
+- ✅ **Project Organization** - Keep all local projects neatly organized
+- ✅ **High Performance** - Lightweight and fast service management
+- ✅ **Reliability** - Stable service handling with error recovery
 
-## 📦 Cài Đặt
+## 📦 Installation
 
-### Yêu cầu Hệ thống
-- **Windows 10/11** hoặc **Windows Server 2012 R2+**
-- **RAM 4GB** tối thiểu (khuyến nghị 8GB)
-- **500MB** dung lượng ổ đĩa trống
+### System Requirements
+- **Windows 10/11** or **Windows Server 2012 R2+**
+- **4GB RAM** minimum (8GB recommended)
+- **500MB** disk space
 
-### Tải xuống & Cài đặt
-1. Tải phiên bản mới nhất từ [Releases](https://github.com/nghiaomg/sonna/releases)
-2. Chạy trình cài đặt với quyền Administrator
-3. Làm theo hướng dẫn cài đặt
-4. Khởi chạy Sonna và khởi tạo môi trường phát triển của bạn
+### Download & Install
+1. Download the latest version from [Releases](https://github.com/nghiaomg/sonna/releases)
+2. Run the installer with Administrator privileges
+3. Follow the installation instructions
+4. Launch Sonna and initialize your development environment
 
 ### Build from Source
 ```bash
@@ -79,29 +79,29 @@ pnpm build
 pnpm dist:win
 ```
 
-## 🏃‍♂️ Bắt Đầu
+## 🏃‍♂️ Getting Started
 
-### Lần Khởi chạy Đầu tiên
-1. **Khởi tạo Môi trường** - Sonna sẽ tạo các thư mục và cấu hình cần thiết
-2. **Cài đặt Dịch vụ** - Chọn dịch vụ phát triển bạn muốn cài đặt (PHP, Apache, MySQL, v.v.)
-3. **Tạo Dự án Đầu tiên** - Thiết lập dự án web mới hoặc nhập dự án hiện có
-4. **Bắt đầu Phát triển** - Bắt đầu lập trình với môi trường cục bộ đã được cấu hình đầy đủ
+### First Launch
+1. **Initialize Environment** - Sonna will create necessary folders and configurations
+2. **Install Services** - Select the development services you want to install (PHP, Apache, MySQL, etc.)
+3. **Create First Project** - Set up a new web project or import an existing one
+4. **Start Developing** - Begin coding with a fully configured local environment
 
-### Hướng dẫn Thiết lập Nhanh
-1. Mở Sonna
-2. Đi đến tab **Cài đặt**
-3. Chọn dịch vụ bạn cần (khuyến nghị: PHP + Apache + MySQL)
-4. Nhấp **Cài đặt** và đợi hoàn tất
-5. Chuyển đến tab **Dịch vụ** và khởi động dịch vụ của bạn
-6. Môi trường phát triển của bạn đã sẵn sàng!
+### Quick Setup Guide
+1. Open Sonna
+2. Go to the **Install** tab
+3. Select the services you need (recommended: PHP + Apache + MySQL)
+4. Click **Install** and wait for completion
+5. Switch to the **Services** tab and start your services
+6. Your development environment is ready!
 
-## 🎨 Giao Diện Người Dùng
+## 🎨 User Interface
 
-### Thiết kế Trực quan
-- **Điều hướng dựa trên Tab** - Các phần Dịch vụ, Cài đặt, Dọn dẹp
-- **Chỉ báo Trạng thái** - Phản hồi trực quan về trạng thái dịch vụ
-- **Theo dõi Tiến trình** - Tiến trình cài đặt và vận hành theo thời gian thực
-- **Bố cục Đáp ứng** - Hoạt động tốt trên các kích thước màn hình khác nhau
+### Intuitive Design
+- **Tab-based Navigation** - Services, Install, Cleanup sections
+- **Status Indicators** - Visual feedback on service status
+- **Progress Tracking** - Real-time installation and operation progress
+- **Responsive Layout** - Works well on different screen sizes
 
 ### Accessibility
 - **Keyboard Navigation** support
@@ -109,43 +109,43 @@ pnpm dist:win
 - **High Contrast** mode support
 - **Customizable** interface elements
 
-## 🔧 Cấu Hình
+## 🔧 Configuration
 
-### Cấu hình Dịch vụ
-- **Apache** - Thư mục gốc tài liệu, virtual hosts, modules
-- **PHP** - Chuyển đổi phiên bản, extensions, cài đặt php.ini
-- **MySQL** - Quản lý cơ sở dữ liệu, tài khoản người dùng
-- **Nginx** - Cấu hình máy chủ web thay thế
+### Service Configuration
+- **Apache** - Document root directory, virtual hosts, modules
+- **PHP** - Version switching, extensions, php.ini settings
+- **MySQL** - Database management, user accounts
+- **Nginx** - Alternative web server configuration
 
-### Cài đặt Dự án
-- **Tự động phát hiện** dự án cục bộ
-- **Tên miền tùy chỉnh** (.test, .local, .dev)
-- **Chứng chỉ SSL** cho phát triển HTTPS
-- **Quản lý biến môi trường**
+### Project Settings
+- **Auto-detection** of local projects
+- **Custom domains** (.test, .local, .dev)
+- **SSL certificates** for HTTPS development
+- **Environment variable** management
 
-## 🔒 Bảo Mật & Quyền Riêng Tư
+## 🔒 Security & Privacy
 
-### Tính năng Bảo mật
-- **Cách ly Quy trình** - Dịch vụ chạy trong các quy trình riêng biệt
-- **Quản lý Quyền** - Quyền tối thiểu cần thiết
-- **Mặc định An toàn** - Cấu hình an toàn ngay từ đầu
-- **Cập nhật Thường xuyên** - Vá lỗi bảo mật và cải tiến
+### Security Features
+- **Process Isolation** - Services run in separate processes
+- **Permission Management** - Minimum required permissions
+- **Secure by Default** - Safe configurations out of the box
+- **Regular Updates** - Security patches and improvements
 
-### Quyền riêng tư
-- **Không có Dữ liệu Theo dõi** - Chúng tôi không thu thập dữ liệu sử dụng
-- **Hoạt động Cục bộ** - Mọi thứ đều chạy trên máy của bạn
-- **Mã Nguồn Mở** - Minh bạch hoàn toàn trong mã
+### Privacy
+- **No Tracking Data** - We don't collect usage data
+- **Local Operation** - Everything runs on your machine
+- **Open Source** - Complete transparency in code
 
-## 📝 Giấy Phép
+## 📝 License
 
-MIT License - Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
+MIT License - See the [LICENSE](LICENSE) file for details.
 
-## 📞 Liên Hệ
+## 📞 Contact
 
-**Nhà phát triển**: nghiaomg  
+**Developer**: nghiaomg  
 **GitHub**: [https://github.com/nghiaomg](https://github.com/nghiaomg)  
-**Dự án**: [https://github.com/nghiaomg/sonna](https://github.com/nghiaomg/sonna)
+**Project**: [https://github.com/nghiaomg/sonna](https://github.com/nghiaomg/sonna)
 
 ---
 
-*Được xây dựng với ❤️ để hiện đại hóa phát triển cục bộ trên Windows*
+*Built with ❤️ to modernize local development on Windows*
