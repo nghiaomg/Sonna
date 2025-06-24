@@ -107,5 +107,13 @@
   "failedToCleanup": "Failed to cleanup",
   
   "hideToTray": "Hide to System Tray",
-  "quitApp": "Quit Application"
+  "quitApp": "Quit Application",
+  
+  "edit": "Edit",
+  "done": "Done",
+  "addService": "Add Service",
+  "selectService": "Select Service",
+  "selectServiceDesc": "Choose a service to add to your dashboard",
+  "searchServices": "Search services...",
+  "noServicesFound": "No services found"
 } 

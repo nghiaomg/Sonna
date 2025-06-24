@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Square, Network } from 'lucide-react';
+import { Play, Square, Network, Edit, Check } from 'lucide-react';
 import type { Service } from '@/types';
 import { useLanguage } from '@/lib/language-context';
 import { ServiceManager } from '@/services';
@@ -21,16 +21,22 @@ export const ServiceControl: React.FC<ServiceControlProps> = ({
   onInstallClick
 }) => {
   const { t } = useLanguage();
+  const [isEditMode, setIsEditMode] = useState(false);
   
-  const handleStartAll = async () => {
-    await ServiceManager.startAllServices(services);
-    // Refresh services status
-    const updatedServices = await ServiceManager.getServicesStatus(services);
-    onServiceUpdate(updatedServices);
-  };
+  // Check if any service is running
+  const hasRunningServices = useMemo(() => {
+    return services.some(service => service.running);
+  }, [services]);
   
-  const handleStopAll = async () => {
-    await ServiceManager.stopAllServices(services);
+  const handleToggleAllServices = async () => {
+    if (hasRunningServices) {
+      // Stop all services if any are running
+      await ServiceManager.stopAllServices(services);
+    } else {
+      // Start all services if none are running
+      await ServiceManager.startAllServices(services);
+    }
+    
     // Refresh services status
     const updatedServices = await ServiceManager.getServicesStatus(services);
     onServiceUpdate(updatedServices);
@@ -45,18 +51,46 @@ export const ServiceControl: React.FC<ServiceControlProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex space-x-4 mb-6">
-          <Button onClick={handleStartAll} className="flex items-center">
-            <Play className="w-4 h-4 mr-2" />
-            {t.startAll}
-          </Button>
-          <Button onClick={handleStopAll} variant="destructive" className="flex items-center">
-            <Square className="w-4 h-4 mr-2" />
-            {t.stopAll}
-          </Button>
-          <Button onClick={onPortSettingsClick} variant="outline" className="flex items-center">
-            <Network className="w-4 h-4 mr-2" />
-            {t.portSettings}
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex space-x-4 mb-6">
+            <Button 
+              onClick={handleToggleAllServices} 
+              variant={hasRunningServices ? "destructive" : "default"}
+              className="flex items-center"
+            >
+              {hasRunningServices ? (
+                <>
+                  <Square className="w-4 h-4 mr-2" />
+                  {t.stopAll}
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  {t.startAll}
+                </>
+              )}
+            </Button>
+            <Button onClick={onPortSettingsClick} variant="outline" className="flex items-center">
+              <Network className="w-4 h-4 mr-2" />
+              {t.portSettings}
+            </Button>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsEditMode(!isEditMode)}
+            className="flex items-center"
+          >
+            {isEditMode ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                {t.done}
+              </>
+            ) : (
+              <>
+                <Edit className="w-4 h-4 mr-2" />
+                {t.edit}
+              </>
+            )}
           </Button>
         </div>
 
@@ -64,6 +98,7 @@ export const ServiceControl: React.FC<ServiceControlProps> = ({
           services={services} 
           onServiceUpdate={onServiceUpdate}
           onInstallClick={onInstallClick}
+          isEditMode={isEditMode}
         />
       </CardContent>
     </Card>

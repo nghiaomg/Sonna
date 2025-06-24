@@ -145,8 +145,8 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
           const isCompleted = service.installed || download?.status === 'completed';
             
             return (
-              <div key={service.name} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-3 flex-1">
+              <div key={service.name} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg gap-4">
+                <div className="flex items-center space-x-3 md:w-1/4 mb-2 md:mb-0">
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(download?.status || '')}
                     <div>
@@ -158,9 +158,9 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-4 flex-1">
+                <div className="flex items-center space-x-4 w-full md:w-1/2 px-0 md:px-4 mb-2 md:mb-0">
                   {download && (
-                    <div className="flex-1">
+                    <div className="w-full">
                       <div className="flex justify-between text-sm mb-1">
                         <span className={cn("font-medium", getStatusColor(download.status))}>
                           {download.message}
@@ -171,17 +171,22 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                           </span>
                         )}
                       </div>
-                                             {(download.status === 'downloading' || download.status === 'extracting' || download.status === 'setup') && (
-                         <Progress 
-                           value={download.status === 'downloading' ? download.progress : 100} 
-                           className="h-2"
-                         />
-                       )}
+                      {(download.status === 'downloading' || download.status === 'extracting' || download.status === 'setup') && (
+                        <Progress 
+                          value={download.status === 'downloading' ? download.progress : 100} 
+                          variant={
+                            download.status === 'downloading' ? 'default' :
+                            download.status === 'extracting' ? 'warning' :
+                            download.status === 'setup' ? 'success' : 'default'
+                          }
+                          className="h-2"
+                        />
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-start md:justify-end w-full md:w-1/4">
                   {isCompleted ? (
                     <span className="text-green-600 font-medium flex items-center">
                       <CheckCircle className="w-4 h-4 mr-1" />
@@ -192,6 +197,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                       onClick={() => handleDownload(service.name)}
                       disabled={isDownloading}
                       size="sm"
+                      className="min-w-[100px]"
                     >
                       {isDownloading ? (
                         <>

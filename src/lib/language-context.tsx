@@ -128,6 +128,15 @@ export interface TranslationKey {
   // Window controls
   hideToTray: string;
   quitApp: string;
+  
+  // Service management
+  edit: string;
+  done: string;
+  addService: string;
+  selectService: string;
+  selectServiceDesc: string;
+  searchServices: string;
+  noServicesFound: string;
 }
 
 // Create language context
@@ -295,7 +304,14 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     failedToDelete: 'Failed to delete',
     failedToCleanup: 'Failed to cleanup',
     hideToTray: 'Hide to System Tray',
-    quitApp: 'Quit Application'
+    quitApp: 'Quit Application',
+    edit: 'Edit',
+    done: 'Done',
+    addService: 'Add Service',
+    selectService: 'Select Service',
+    selectServiceDesc: 'Select a service to manage',
+    searchServices: 'Search Services',
+    noServicesFound: 'No services found'
   };
 
   return (
