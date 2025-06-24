@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
   closeWindow: () => ipcRenderer.invoke('close-window'),
   isWindowMaximized: () => ipcRenderer.invoke('is-window-maximized'),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
+  hideToTray: () => ipcRenderer.invoke('hide-to-tray'),
   
   // Setup and Configuration
   initializeSonna: () => ipcRenderer.invoke('initialize-sonna'),
@@ -48,6 +50,8 @@ declare global {
       maximizeWindow: () => Promise<void>;
       closeWindow: () => Promise<void>;
       isWindowMaximized: () => Promise<boolean>;
+      quitApp: () => Promise<void>;
+      hideToTray: () => Promise<void>;
       initializeSonna: () => Promise<any>;
       getSonnaConfig: () => Promise<any>;
       downloadService: (serviceName: string) => Promise<any>;

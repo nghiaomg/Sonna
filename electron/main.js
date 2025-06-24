@@ -39,11 +39,154 @@ const fs = __importStar(require("fs"));
 const utils_1 = require("./utils");
 const isDev = process.env.NODE_ENV === 'development';
 let mainWindow;
+let tray = null;
+let isQuitting = false;
 // Initialize utility managers
 const serviceManager = new utils_1.ServiceManager();
 const configManager = new utils_1.ConfigManager();
 const serviceConfigurator = new utils_1.ServiceConfigurator();
 const downloadManager = new utils_1.DownloadManager();
+function createTray() {
+    // Create tray icon
+    const iconPath = path.join(__dirname, '../public/logo.ico');
+    const trayIcon = electron_1.nativeImage.createFromPath(iconPath);
+    tray = new electron_1.Tray(trayIcon.resize({ width: 16, height: 16 }));
+    // Update tray context menu with service status
+    updateTrayMenu();
+    tray.setToolTip('Sonna - Local Development Environment');
+    // Double click to show/hide window
+    tray.on('double-click', () => {
+        if (mainWindow) {
+            if (mainWindow.isVisible()) {
+                mainWindow.hide();
+            }
+            else {
+                mainWindow.show();
+                mainWindow.focus();
+            }
+        }
+    });
+}
+async function updateTrayMenu() {
+    if (!tray)
+        return;
+    try {
+        // Get current service status
+        const servicesStatus = await serviceManager.getServicesStatus();
+        const serviceMenuItems = Object.entries(servicesStatus).map(([serviceName, status]) => {
+            const isInstalled = status.installed;
+            const isRunning = status.running;
+            if (!isInstalled) {
+                return {
+                    label: `${serviceName} (Chưa cài đặt)`,
+                    enabled: false
+                };
+            }
+            return {
+                label: `${serviceName} (${isRunning ? 'Đang chạy' : 'Dừng'})`,
+                click: async () => {
+                    try {
+                        if (isRunning) {
+                            await serviceManager.stopService(serviceName);
+                        }
+                        else {
+                            await serviceManager.startService(serviceName);
+                        }
+                        // Update menu after service state change
+                        setTimeout(updateTrayMenu, 1000);
+                    }
+                    catch (error) {
+                        console.error(`Failed to toggle ${serviceName}:`, error);
+                    }
+                }
+            };
+        });
+        const contextMenu = electron_1.Menu.buildFromTemplate([
+            {
+                label: 'Sonna - Local Dev Environment',
+                enabled: false
+            },
+            { type: 'separator' },
+            ...serviceMenuItems,
+            { type: 'separator' },
+            {
+                label: 'Mở Sonna',
+                click: () => {
+                    if (mainWindow) {
+                        mainWindow.show();
+                        mainWindow.focus();
+                    }
+                }
+            },
+            {
+                label: 'Khởi động tất cả dịch vụ',
+                click: async () => {
+                    try {
+                        const servicesStatus = await serviceManager.getServicesStatus();
+                        for (const [serviceName, status] of Object.entries(servicesStatus)) {
+                            if (status.installed && !status.running) {
+                                await serviceManager.startService(serviceName);
+                            }
+                        }
+                        setTimeout(updateTrayMenu, 2000);
+                    }
+                    catch (error) {
+                        console.error('Failed to start all services:', error);
+                    }
+                }
+            },
+            {
+                label: 'Dừng tất cả dịch vụ',
+                click: async () => {
+                    try {
+                        await serviceManager.cleanup();
+                        setTimeout(updateTrayMenu, 1000);
+                    }
+                    catch (error) {
+                        console.error('Failed to stop all services:', error);
+                    }
+                }
+            },
+            { type: 'separator' },
+            {
+                label: 'Thoát',
+                click: () => {
+                    isQuitting = true;
+                    electron_1.app.quit();
+                }
+            }
+        ]);
+        tray.setContextMenu(contextMenu);
+    }
+    catch (error) {
+        console.error('Failed to update tray menu:', error);
+        // Fallback simple menu
+        const contextMenu = electron_1.Menu.buildFromTemplate([
+            {
+                label: 'Sonna - Local Dev Environment',
+                enabled: false
+            },
+            { type: 'separator' },
+            {
+                label: 'Mở Sonna',
+                click: () => {
+                    if (mainWindow) {
+                        mainWindow.show();
+                        mainWindow.focus();
+                    }
+                }
+            },
+            {
+                label: 'Thoát',
+                click: () => {
+                    isQuitting = true;
+                    electron_1.app.quit();
+                }
+            }
+        ]);
+        tray.setContextMenu(contextMenu);
+    }
+}
 function createWindow() {
     mainWindow = new electron_1.BrowserWindow({
         width: 1200,
@@ -70,12 +213,27 @@ function createWindow() {
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
     });
+    mainWindow.on('close', (event) => {
+        if (!isQuitting) {
+            event.preventDefault();
+            mainWindow.hide();
+            // Show tray notification on first minimize
+            if (tray && !mainWindow.isVisible()) {
+                tray.displayBalloon({
+                    iconType: 'info',
+                    title: 'Sonna',
+                    content: 'Ứng dụng đang chạy ngầm. Click vào biểu tượng khay hệ thống để mở lại.'
+                });
+            }
+        }
+    });
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
 }
 electron_1.app.whenReady().then(() => {
     createWindow();
+    createTray();
     electron_1.app.on('activate', () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0) {
             createWindow();
@@ -83,20 +241,30 @@ electron_1.app.whenReady().then(() => {
     });
 });
 electron_1.app.on('window-all-closed', async () => {
-    // Cleanup services before quitting
-    await serviceManager.cleanup();
-    if (process.platform !== 'darwin') {
-        electron_1.app.quit();
+    // Don't quit the app when all windows are closed if we have a tray
+    // Only quit if explicitly requested (isQuitting = true)
+    if (isQuitting) {
+        // Cleanup services before quitting
+        await serviceManager.cleanup();
+        if (process.platform !== 'darwin') {
+            electron_1.app.quit();
+        }
     }
 });
 electron_1.ipcMain.handle('get-services-status', async () => {
     return await serviceManager.getServicesStatus();
 });
 electron_1.ipcMain.handle('start-service', async (event, serviceName) => {
-    return await serviceManager.startService(serviceName);
+    const result = await serviceManager.startService(serviceName);
+    // Update tray menu after service state change
+    setTimeout(updateTrayMenu, 1000);
+    return result;
 });
 electron_1.ipcMain.handle('stop-service', async (event, serviceName) => {
-    return await serviceManager.stopService(serviceName);
+    const result = await serviceManager.stopService(serviceName);
+    // Update tray menu after service state change
+    setTimeout(updateTrayMenu, 1000);
+    return result;
 });
 electron_1.ipcMain.handle('get-projects', async () => {
     return [];
@@ -118,6 +286,13 @@ electron_1.ipcMain.handle('maximize-window', async () => {
 });
 electron_1.ipcMain.handle('close-window', async () => {
     mainWindow?.close();
+});
+electron_1.ipcMain.handle('quit-app', async () => {
+    isQuitting = true;
+    electron_1.app.quit();
+});
+electron_1.ipcMain.handle('hide-to-tray', async () => {
+    mainWindow?.hide();
 });
 electron_1.ipcMain.handle('is-window-maximized', async () => {
     return mainWindow?.isMaximized() || false;
@@ -255,6 +430,8 @@ electron_1.ipcMain.handle('download-service', async (event, serviceName) => {
             status: 'completed',
             message: `${service.displayName} installed successfully`
         });
+        // Update tray menu after installation
+        setTimeout(updateTrayMenu, 1000);
         return { success: true, message: `${service.displayName} installed successfully` };
     }
     catch (error) {

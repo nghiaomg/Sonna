@@ -79,6 +79,10 @@ export interface TranslationKey {
   failedToDownload: string;
   failedToDelete: string;
   failedToCleanup: string;
+  
+  // Window controls
+  hideToTray: string;
+  quitApp: string;
 }
 
 export const defaultLanguage: Language = 'en';

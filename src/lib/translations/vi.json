@@ -67,5 +67,8 @@
   "failedToStop": "Không thể dừng",
   "failedToDownload": "Không thể tải xuống",
   "failedToDelete": "Không thể xóa",
-  "failedToCleanup": "Không thể dọn dẹp"
+  "failedToCleanup": "Không thể dọn dẹp",
+  
+  "hideToTray": "Thu nhỏ vào khay",
+  "quitApp": "Thoát ứng dụng"
 } 

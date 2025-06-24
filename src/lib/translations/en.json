@@ -67,5 +67,8 @@
   "failedToStop": "Failed to stop",
   "failedToDownload": "Failed to download",
   "failedToDelete": "Failed to delete",
-  "failedToCleanup": "Failed to cleanup"
+  "failedToCleanup": "Failed to cleanup",
+  
+  "hideToTray": "Minimize to Tray",
+  "quitApp": "Quit Application"
 } 

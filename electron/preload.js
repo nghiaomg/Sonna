@@ -17,6 +17,8 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     maximizeWindow: () => electron_1.ipcRenderer.invoke('maximize-window'),
     closeWindow: () => electron_1.ipcRenderer.invoke('close-window'),
     isWindowMaximized: () => electron_1.ipcRenderer.invoke('is-window-maximized'),
+    quitApp: () => electron_1.ipcRenderer.invoke('quit-app'),
+    hideToTray: () => electron_1.ipcRenderer.invoke('hide-to-tray'),
     // Setup and Configuration
     initializeSonna: () => electron_1.ipcRenderer.invoke('initialize-sonna'),
     getSonnaConfig: () => electron_1.ipcRenderer.invoke('get-sonna-config'),

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
@@ -13,12 +13,161 @@ import {
 const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow: BrowserWindow;
+let tray: Tray | null = null;
+let isQuitting = false;
 
 // Initialize utility managers
 const serviceManager = new ServiceManager();
 const configManager = new ConfigManager();
 const serviceConfigurator = new ServiceConfigurator();
 const downloadManager = new DownloadManager();
+
+function createTray() {
+  // Create tray icon
+  const iconPath = path.join(__dirname, '../public/logo.ico');
+  const trayIcon = nativeImage.createFromPath(iconPath);
+  tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
+  
+  // Update tray context menu with service status
+  updateTrayMenu();
+  
+  tray.setToolTip('Sonna - Local Development Environment');
+  
+  // Double click to show/hide window
+  tray.on('double-click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.hide();
+      } else {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    }
+  });
+}
+
+async function updateTrayMenu() {
+  if (!tray) return;
+  
+  try {
+    // Get current service status
+    const servicesStatus = await serviceManager.getServicesStatus();
+    
+    const serviceMenuItems = Object.entries(servicesStatus).map(([serviceName, status]) => {
+      const isInstalled = status.installed;
+      const isRunning = status.running;
+      
+      if (!isInstalled) {
+        return {
+          label: `${serviceName} (Chưa cài đặt)`,
+          enabled: false
+        };
+      }
+      
+      return {
+        label: `${serviceName} (${isRunning ? 'Đang chạy' : 'Dừng'})`,
+        click: async () => {
+          try {
+            if (isRunning) {
+              await serviceManager.stopService(serviceName);
+            } else {
+              await serviceManager.startService(serviceName);
+            }
+            // Update menu after service state change
+            setTimeout(updateTrayMenu, 1000);
+          } catch (error) {
+            console.error(`Failed to toggle ${serviceName}:`, error);
+          }
+        }
+      };
+    });
+    
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Sonna - Local Dev Environment',
+        enabled: false
+      },
+      { type: 'separator' },
+      ...serviceMenuItems,
+      { type: 'separator' },
+      {
+        label: 'Mở Sonna',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        }
+      },
+      {
+        label: 'Khởi động tất cả dịch vụ',
+        click: async () => {
+          try {
+            const servicesStatus = await serviceManager.getServicesStatus();
+            for (const [serviceName, status] of Object.entries(servicesStatus)) {
+              if (status.installed && !status.running) {
+                await serviceManager.startService(serviceName);
+              }
+            }
+            setTimeout(updateTrayMenu, 2000);
+          } catch (error) {
+            console.error('Failed to start all services:', error);
+          }
+        }
+      },
+      {
+        label: 'Dừng tất cả dịch vụ',
+        click: async () => {
+          try {
+            await serviceManager.cleanup();
+            setTimeout(updateTrayMenu, 1000);
+          } catch (error) {
+            console.error('Failed to stop all services:', error);
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Thoát',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+    
+    tray.setContextMenu(contextMenu);
+  } catch (error) {
+    console.error('Failed to update tray menu:', error);
+    
+    // Fallback simple menu
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Sonna - Local Dev Environment',
+        enabled: false
+      },
+      { type: 'separator' },
+      {
+        label: 'Mở Sonna',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        }
+      },
+      {
+        label: 'Thoát',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+    
+    tray.setContextMenu(contextMenu);
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -48,6 +197,22 @@ function createWindow() {
     mainWindow.show();
   });
 
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      
+      // Show tray notification on first minimize
+      if (tray && !mainWindow.isVisible()) {
+        tray.displayBalloon({
+          iconType: 'info',
+          title: 'Sonna',
+          content: 'Ứng dụng đang chạy ngầm. Click vào biểu tượng khay hệ thống để mở lại.'
+        });
+      }
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null as any;
   });
@@ -55,6 +220,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  createTray();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -64,11 +230,15 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', async () => {
-  // Cleanup services before quitting
-  await serviceManager.cleanup();
-  
-  if (process.platform !== 'darwin') {
-    app.quit();
+  // Don't quit the app when all windows are closed if we have a tray
+  // Only quit if explicitly requested (isQuitting = true)
+  if (isQuitting) {
+    // Cleanup services before quitting
+    await serviceManager.cleanup();
+    
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
   }
 });
 
@@ -79,11 +249,17 @@ ipcMain.handle('get-services-status', async () => {
 
 
 ipcMain.handle('start-service', async (event, serviceName: string) => {
-  return await serviceManager.startService(serviceName);
+  const result = await serviceManager.startService(serviceName);
+  // Update tray menu after service state change
+  setTimeout(updateTrayMenu, 1000);
+  return result;
 });
 
 ipcMain.handle('stop-service', async (event, serviceName: string) => {
-  return await serviceManager.stopService(serviceName);
+  const result = await serviceManager.stopService(serviceName);
+  // Update tray menu after service state change
+  setTimeout(updateTrayMenu, 1000);
+  return result;
 });
 
 ipcMain.handle('get-projects', async () => {
@@ -109,6 +285,15 @@ ipcMain.handle('maximize-window', async () => {
 
 ipcMain.handle('close-window', async () => {
   mainWindow?.close();
+});
+
+ipcMain.handle('quit-app', async () => {
+  isQuitting = true;
+  app.quit();
+});
+
+ipcMain.handle('hide-to-tray', async () => {
+  mainWindow?.hide();
 });
 
 ipcMain.handle('is-window-maximized', async () => {
@@ -279,6 +464,9 @@ ipcMain.handle('download-service', async (event, serviceName: string) => {
       status: 'completed',
       message: `${service.displayName} installed successfully`
     });
+
+    // Update tray menu after installation
+    setTimeout(updateTrayMenu, 1000);
 
     return { success: true, message: `${service.displayName} installed successfully` };
   } catch (error) {
