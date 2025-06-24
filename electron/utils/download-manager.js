@@ -32,11 +32,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DownloadManager = void 0;
 const fs = __importStar(require("fs"));
 const https = __importStar(require("https"));
 const http = __importStar(require("http"));
+const adm_zip_1 = __importDefault(require("adm-zip"));
 class DownloadManager {
     constructor(onProgress) {
         this.onProgress = onProgress;
@@ -149,11 +153,10 @@ class DownloadManager {
                     status: 'extracting',
                     message: 'Extracting files...'
                 });
-                const AdmZip = require('adm-zip');
                 // Test if zip is valid before extraction
                 let zip;
                 try {
-                    zip = new AdmZip(zipPath);
+                    zip = new adm_zip_1.default(zipPath);
                     // Test zip integrity
                     const entries = zip.getEntries();
                     if (entries.length === 0) {

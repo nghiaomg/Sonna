@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as https from 'https';
 import * as http from 'http';
+import AdmZip from 'adm-zip';
 
 export interface DownloadProgress {
   serviceName: string;
@@ -145,8 +146,6 @@ export class DownloadManager {
           message: 'Extracting files...'
         });
 
-        const AdmZip = require('adm-zip');
-        
         // Test if zip is valid before extraction
         let zip;
         try {

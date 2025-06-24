@@ -77,7 +77,14 @@ class ServiceManager {
             if (!service.installed || !this.checkServiceInstallation(service)) {
                 return { success: false, message: 'Service not installed' };
             }
-            const executablePath = path.join(service.extractPath, service.executable);
+            let executablePath = path.join(service.extractPath, service.executable);
+            // Special handling for Apache nested structure
+            if (serviceName === 'apache' && !fs.existsSync(executablePath)) {
+                const apacheNestedPath = path.join(service.extractPath, 'Apache24', service.executable);
+                if (fs.existsSync(apacheNestedPath)) {
+                    executablePath = apacheNestedPath;
+                }
+            }
             if (!fs.existsSync(executablePath)) {
                 return { success: false, message: 'Service executable not found' };
             }
@@ -125,26 +132,69 @@ class ServiceManager {
     checkServiceInstallation(service) {
         try {
             const extractPath = service.extractPath;
+            console.log(`Checking installation for ${service.name} at ${extractPath}`);
             if (!fs.existsSync(extractPath)) {
+                console.log(`Extract path does not exist: ${extractPath}`);
                 return false;
+            }
+            // List directory contents for debugging
+            try {
+                const contents = fs.readdirSync(extractPath);
+                console.log(`Directory contents for ${service.name}:`, contents);
+            }
+            catch (e) {
+                console.log(`Could not read directory: ${extractPath}`);
             }
             if (service.executable && service.executable !== "") {
                 const executablePath = path.join(extractPath, service.executable);
                 if (!fs.existsSync(executablePath)) {
-                    return false;
+                    console.log(`Executable not found: ${executablePath}`);
+                    // For services like Apache, executable might be nested deeper
+                    // Try to find it recursively
+                    const found = this.findFileRecursively(extractPath, path.basename(service.executable));
+                    if (found) {
+                        console.log(`Found executable at: ${found}`);
+                    }
+                    else {
+                        console.log(`Executable ${service.executable} not found anywhere in ${extractPath}`);
+                    }
                 }
             }
             switch (service.name) {
                 case 'apache':
-                    return fs.existsSync(path.join(extractPath, 'conf', 'httpd.conf'));
+                    // Apache might extract to a subfolder
+                    const apacheConfigPaths = [
+                        path.join(extractPath, 'conf', 'httpd.conf'),
+                        path.join(extractPath, 'Apache24', 'conf', 'httpd.conf'),
+                        path.join(extractPath, 'httpd-2.4.63-250207-win64-VS17', 'conf', 'httpd.conf')
+                    ];
+                    for (const configPath of apacheConfigPaths) {
+                        if (fs.existsSync(configPath)) {
+                            console.log(`Found Apache config at: ${configPath}`);
+                            return true;
+                        }
+                    }
+                    // If no config found, just check if bin directory exists
+                    const binPaths = [
+                        path.join(extractPath, 'bin'),
+                        path.join(extractPath, 'Apache24', 'bin'),
+                        path.join(extractPath, 'httpd-2.4.63-250207-win64-VS17', 'bin')
+                    ];
+                    for (const binPath of binPaths) {
+                        if (fs.existsSync(binPath)) {
+                            console.log(`Found Apache bin directory at: ${binPath}`);
+                            return true;
+                        }
+                    }
+                    console.log(`Apache installation check failed for ${extractPath}`);
+                    return false;
                 case 'mysql':
-                    return fs.existsSync(path.join(extractPath, 'bin')) &&
-                        fs.existsSync(path.join(extractPath, 'my.ini'));
+                    return fs.existsSync(path.join(extractPath, 'bin'));
                 case 'nginx':
-                    return fs.existsSync(path.join(extractPath, 'conf', 'nginx.conf'));
+                    return fs.existsSync(path.join(extractPath, 'conf', 'nginx.conf')) ||
+                        fs.existsSync(path.join(extractPath, 'nginx.exe'));
                 case 'php':
-                    return fs.existsSync(path.join(extractPath, 'php.exe')) ||
-                        fs.existsSync(path.join(extractPath, 'php.ini'));
+                    return fs.existsSync(path.join(extractPath, 'php.exe'));
                 case 'redis':
                     return fs.existsSync(path.join(extractPath, 'redis-server.exe'));
                 case 'nodejs':
@@ -158,6 +208,29 @@ class ServiceManager {
         catch (error) {
             console.error(`Failed to check installation for ${service.name}:`, error);
             return false;
+        }
+    }
+    findFileRecursively(dir, filename) {
+        try {
+            const items = fs.readdirSync(dir);
+            // Check if file exists in current directory
+            if (items.includes(filename)) {
+                return path.join(dir, filename);
+            }
+            // Search in subdirectories
+            for (const item of items) {
+                const itemPath = path.join(dir, item);
+                if (fs.statSync(itemPath).isDirectory()) {
+                    const found = this.findFileRecursively(itemPath, filename);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            return null;
+        }
+        catch (error) {
+            return null;
         }
     }
     async spawnService(serviceName, executablePath, service) {

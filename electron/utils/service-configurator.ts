@@ -74,13 +74,20 @@ export class ServiceConfigurator {
   }
 
   private async setupApache(extractPath: string): Promise<void> {
-    const httpdConfPath = path.join(extractPath, 'conf', 'httpd.conf');
+    // Check for nested Apache24 structure
+    let apacheRoot = extractPath;
+    const nestedApachePath = path.join(extractPath, 'Apache24');
+    if (fs.existsSync(nestedApachePath)) {
+      apacheRoot = nestedApachePath;
+    }
+    
+    const httpdConfPath = path.join(apacheRoot, 'conf', 'httpd.conf');
     
     if (fs.existsSync(httpdConfPath)) {
       let httpdConf = fs.readFileSync(httpdConfPath, 'utf8');
       
       // Update server root and document root
-      httpdConf = httpdConf.replace(/ServerRoot ".*"/g, `ServerRoot "${extractPath.replace(/\\/g, '/')}"`);
+      httpdConf = httpdConf.replace(/ServerRoot ".*"/g, `ServerRoot "${apacheRoot.replace(/\\/g, '/')}"`);
       httpdConf = httpdConf.replace(/DocumentRoot ".*"/g, 'DocumentRoot "C:/sonna/www"');
       httpdConf = httpdConf.replace(/<Directory ".*">/g, '<Directory "C:/sonna/www">');
       

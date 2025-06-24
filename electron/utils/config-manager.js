@@ -55,6 +55,12 @@ class ConfigManager {
             if (!fs.existsSync(wwwPath)) {
                 fs.mkdirSync(wwwPath, { recursive: true });
             }
+            // Create default index.html if not exists
+            const indexHtmlPath = path.join(wwwPath, 'index.html');
+            if (!fs.existsSync(indexHtmlPath)) {
+                const defaultIndexContent = this.getDefaultIndexHtml();
+                fs.writeFileSync(indexHtmlPath, defaultIndexContent, 'utf8');
+            }
             // Create default config if not exists
             if (!fs.existsSync(this.configPath)) {
                 const defaultConfig = this.getDefaultConfig(applicationsPath, wwwPath);
@@ -215,6 +221,104 @@ class ConfigManager {
                 defaultPort: 80
             }
         };
+    }
+    getDefaultIndexHtml() {
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello Sonna</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3rem 2rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        .emoji {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+        p {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .feature {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            color: #495057;
+        }
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="emoji">🚀</span>
+        <h1>Hello Sonna!</h1>
+        <p>Welcome to your local development environment. Sonna is now running and ready to serve your web projects from <code>C:/sonna/www</code>.</p>
+        
+        <div class="features">
+            <div class="feature">
+                <strong>🌐 Web Server</strong><br>
+                Apache/Nginx ready
+            </div>
+            <div class="feature">
+                <strong>💾 Database</strong><br>
+                MySQL/MongoDB support
+            </div>
+            <div class="feature">
+                <strong>🐘 PHP</strong><br>
+                Modern PHP versions
+            </div>
+            <div class="feature">
+                <strong>⚡ Fast</strong><br>
+                Optimized for speed
+            </div>
+        </div>
+        
+        <div class="footer">
+            Sonna - Modern Local Development Environment
+        </div>
+    </div>
+</body>
+</html>`;
     }
 }
 exports.ConfigManager = ConfigManager;
