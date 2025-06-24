@@ -17,6 +17,15 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
     maximizeWindow: () => electron_1.ipcRenderer.invoke('maximize-window'),
     closeWindow: () => electron_1.ipcRenderer.invoke('close-window'),
     isWindowMaximized: () => electron_1.ipcRenderer.invoke('is-window-maximized'),
+    // Setup and Configuration
+    initializeSonna: () => electron_1.ipcRenderer.invoke('initialize-sonna'),
+    getSonnaConfig: () => electron_1.ipcRenderer.invoke('get-sonna-config'),
+    downloadService: (serviceName) => electron_1.ipcRenderer.invoke('download-service', serviceName),
+    onDownloadProgress: (callback) => electron_1.ipcRenderer.on('download-progress', callback),
+    removeDownloadProgressListener: (callback) => electron_1.ipcRenderer.removeListener('download-progress', callback),
+    resetInstallationStatus: () => electron_1.ipcRenderer.invoke('reset-installation-status'),
+    cleanupApplications: () => electron_1.ipcRenderer.invoke('cleanup-applications'),
+    deleteService: (serviceName) => electron_1.ipcRenderer.invoke('delete-service', serviceName),
     // Platform info
     platform: process.platform,
 });

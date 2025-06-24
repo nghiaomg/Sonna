@@ -3,7 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 
 import { Titlebar } from '@/components/ui/titlebar';
-import { Server, Database, Globe, Code, Play, Square, Settings, Moon, Sun } from 'lucide-react';
+import { DownloadManager } from '@/components/ui/download-manager';
+import { CleanupManager } from '@/components/ui/cleanup-manager';
+import { Server, Database, Globe, Code, Play, Square, Settings, Moon, Sun, Download, Trash2 } from 'lucide-react';
 
 interface Service {
   name: string;
@@ -11,19 +13,21 @@ interface Service {
   icon: React.ReactNode;
   running: boolean;
   port?: number;
+  installed: boolean;
 }
 
 function App() {
   const [services, setServices] = useState<Service[]>([
-    { name: 'apache', displayName: 'Apache', icon: <Server className="w-5 h-5" />, running: false, port: 80 },
-    { name: 'mysql', displayName: 'MySQL', icon: <Database className="w-5 h-5" />, running: false, port: 3306 },
-    { name: 'nginx', displayName: 'Nginx', icon: <Globe className="w-5 h-5" />, running: false, port: 8080 },
-    { name: 'php', displayName: 'PHP-FPM', icon: <Code className="w-5 h-5" />, running: false },
-    { name: 'redis', displayName: 'Redis', icon: <Database className="w-5 h-5" />, running: false, port: 6379 },
-    { name: 'nodejs', displayName: 'Node.js', icon: <Code className="w-5 h-5" />, running: false },
+    { name: 'apache', displayName: 'Apache', icon: <Server className="w-5 h-5" />, running: false, port: 80, installed: false },
+    { name: 'mysql', displayName: 'MySQL', icon: <Database className="w-5 h-5" />, running: false, port: 3306, installed: false },
+    { name: 'nginx', displayName: 'Nginx', icon: <Globe className="w-5 h-5" />, running: false, port: 8080, installed: false },
+    { name: 'php', displayName: 'PHP-FPM', icon: <Code className="w-5 h-5" />, running: false, installed: false },
+    { name: 'redis', displayName: 'Redis', icon: <Database className="w-5 h-5" />, running: false, port: 6379, installed: false },
+    { name: 'nodejs', displayName: 'Node.js', icon: <Code className="w-5 h-5" />, running: false, installed: false },
   ]);
 
   const [darkMode, setDarkMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<'services' | 'install' | 'cleanup'>('services');
 
   useEffect(() => {
     // Apply dark mode class to document
@@ -46,7 +50,8 @@ function App() {
         setServices(prevServices => 
           prevServices.map(service => ({
             ...service,
-            running: status[service.name] || false
+            installed: status[service.name]?.installed || false,
+            running: status[service.name]?.running || false
           }))
         );
       } catch (error) {
@@ -103,6 +108,76 @@ function App() {
     await loadServicesStatus();
   };
 
+  const handleServiceInstalled = (serviceName: string) => {
+    setServices(prevServices =>
+      prevServices.map(service =>
+        service.name === serviceName ? { ...service, installed: true } : service
+      )
+    );
+  };
+
+  const handleServiceDeleted = (serviceName: string) => {
+    setServices(prevServices =>
+      prevServices.map(service =>
+        service.name === serviceName ? { ...service, installed: false, running: false } : service
+      )
+    );
+    setDownloadServices(prevServices =>
+      prevServices.map(service =>
+        service.name === serviceName ? { ...service, installed: false } : service
+      )
+    );
+  };
+
+  const [downloadServices, setDownloadServices] = useState<any[]>([]);
+
+  // Load real service configurations
+  useEffect(() => {
+    loadServiceConfigurations();
+  }, []);
+
+  const loadServiceConfigurations = async () => {
+    if (window.electronAPI) {
+      try {
+        const configResult = await window.electronAPI.getSonnaConfig();
+        if (configResult.success && configResult.config) {
+          const servicesList = Object.values(configResult.config.services).map((service: any) => ({
+            name: service.name,
+            displayName: service.displayName,
+            version: service.version,
+            installed: service.installed,
+            downloadUrl: service.downloadUrl
+          }));
+          setDownloadServices(servicesList);
+        }
+      } catch (error) {
+        console.error('Failed to load service configurations:', error);
+        // Fallback to default services
+        setDownloadServices(services.map(service => ({
+          name: service.name,
+          displayName: service.displayName,
+          version: '8.3.0', // Default version
+          installed: service.installed,
+          downloadUrl: ''
+        })));
+      }
+    }
+  };
+
+  const resetInstallationStatus = async () => {
+    if (window.electronAPI) {
+      try {
+        const result = await window.electronAPI.resetInstallationStatus();
+        if (result.success) {
+          await loadServicesStatus();
+          await loadServiceConfigurations();
+        }
+      } catch (error) {
+        console.error('Failed to reset installation status:', error);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Custom Titlebar */}
@@ -121,6 +196,36 @@ function App() {
             <Button variant="outline" size="sm" onClick={() => setDarkMode(!darkMode)}>
               {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
+            <Button 
+              variant={activeTab === 'services' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveTab('services')}
+            >
+              Services
+            </Button>
+            <Button 
+              variant={activeTab === 'install' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveTab('install')}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Install
+            </Button>
+            <Button 
+              variant={activeTab === 'cleanup' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setActiveTab('cleanup')}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Cleanup
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={resetInstallationStatus}
+            >
+              Reset Status
+            </Button>
             <Button variant="outline" size="sm">
               <Settings className="w-4 h-4 mr-2" />
               Settings
@@ -132,8 +237,24 @@ function App() {
       {/* Main Content */}
       <main className="p-6">
         <div className="max-w-6xl mx-auto space-y-6">
-          {/* Control Panel */}
-          <Card>
+          {activeTab === 'install' && (
+            <DownloadManager 
+              services={downloadServices}
+              onServiceInstalled={handleServiceInstalled}
+            />
+          )}
+          
+          {activeTab === 'cleanup' && (
+            <CleanupManager 
+              services={downloadServices}
+              onServiceDeleted={handleServiceDeleted}
+            />
+          )}
+          
+          {activeTab === 'services' && (
+            <>
+              {/* Control Panel */}
+              <Card>
             <CardHeader>
               <CardTitle>Service Control</CardTitle>
               <CardDescription>
@@ -164,17 +285,33 @@ function App() {
                            </div>
                            <div className="flex-1">
                             <h3 className="font-medium">{service.displayName}</h3>
-                            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                              <span className={`inline-block w-2 h-2 rounded-full ${service.running ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                              <span>{service.running ? 'Running' : 'Stopped'}</span>
-                              {service.port && service.running && (
-                                <span>:{service.port}</span>
-                              )}
-                            </div>
+                                                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                               <span className={`inline-block w-2 h-2 rounded-full ${
+                                 !service.installed ? 'bg-gray-400' : 
+                                 service.running ? 'bg-green-500' : 'bg-red-500'
+                               }`}></span>
+                               <span>
+                                 {!service.installed ? 'Not Installed' : 
+                                  service.running ? 'Running' : 'Stopped'}
+                               </span>
+                               {service.port && service.running && (
+                                 <span>:{service.port}</span>
+                               )}
+                             </div>
                           </div>
                         </div>
                                                  <div className="flex gap-2">
-                           {service.running ? (
+                           {!service.installed ? (
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => setActiveTab('install')}
+                               className="h-8 px-3"
+                             >
+                               <Download className="w-4 h-4 mr-1" />
+                               Install
+                             </Button>
+                           ) : service.running ? (
                              <Button
                                variant="destructive"
                                size="sm"
@@ -218,6 +355,8 @@ function App() {
               </div>
             </CardContent>
           </Card>
+          </>
+        )}
         </div>
       </main>
     </div>

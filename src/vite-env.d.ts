@@ -4,7 +4,7 @@
 declare global {
   interface Window {
     electronAPI: {
-      getServicesStatus: () => Promise<Record<string, boolean>>;
+      getServicesStatus: () => Promise<Record<string, { installed: boolean; running: boolean }>>;
       startService: (serviceName: string) => Promise<{ success: boolean; message: string }>;
       stopService: (serviceName: string) => Promise<{ success: boolean; message: string }>;
       getProjects: () => Promise<any[]>;
@@ -13,6 +13,13 @@ declare global {
       maximizeWindow: () => Promise<void>;
       closeWindow: () => Promise<void>;
       isWindowMaximized: () => Promise<boolean>;
+      initializeSonna: () => Promise<any>;
+      getSonnaConfig: () => Promise<any>;
+      downloadService: (serviceName: string) => Promise<any>;
+      onDownloadProgress: (callback: any) => void;
+      resetInstallationStatus: () => Promise<any>;
+      cleanupApplications: () => Promise<any>;
+      deleteService: (serviceName: string) => Promise<any>;
       platform: string;
     };
   }

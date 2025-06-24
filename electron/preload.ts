@@ -20,6 +20,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeWindow: () => ipcRenderer.invoke('close-window'),
   isWindowMaximized: () => ipcRenderer.invoke('is-window-maximized'),
   
+  // Setup and Configuration
+  initializeSonna: () => ipcRenderer.invoke('initialize-sonna'),
+  getSonnaConfig: () => ipcRenderer.invoke('get-sonna-config'),
+  downloadService: (serviceName: string) => ipcRenderer.invoke('download-service', serviceName),
+  onDownloadProgress: (callback: any) => ipcRenderer.on('download-progress', callback),
+  removeDownloadProgressListener: (callback: any) => ipcRenderer.removeListener('download-progress', callback),
+  resetInstallationStatus: () => ipcRenderer.invoke('reset-installation-status'),
+  cleanupApplications: () => ipcRenderer.invoke('cleanup-applications'),
+  deleteService: (serviceName: string) => ipcRenderer.invoke('delete-service', serviceName),
+  
   // Platform info
   platform: process.platform,
 });
@@ -37,6 +47,14 @@ declare global {
       maximizeWindow: () => Promise<void>;
       closeWindow: () => Promise<void>;
       isWindowMaximized: () => Promise<boolean>;
+      initializeSonna: () => Promise<any>;
+      getSonnaConfig: () => Promise<any>;
+      downloadService: (serviceName: string) => Promise<any>;
+      onDownloadProgress: (callback: any) => void;
+      removeDownloadProgressListener: (callback: any) => void;
+      resetInstallationStatus: () => Promise<any>;
+      cleanupApplications: () => Promise<any>;
+      deleteService: (serviceName: string) => Promise<any>;
       platform: string;
     };
   }
