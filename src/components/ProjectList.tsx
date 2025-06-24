@@ -16,8 +16,6 @@ interface ProjectListProps {
 export const ProjectList: React.FC<ProjectListProps> = ({ 
   projects, 
   wwwPath,
-  isLoading,
-  onRefresh 
 }) => {
   const { t } = useLanguage();
   
@@ -51,7 +49,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         <Globe className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <p>{t.noProjectsFound}</p>
         <p className="text-sm">{t.noProjectsFoundDesc}</p>
-        <div className="mt-4 text-sm bg-muted p-2 rounded text-center">
+        <div 
+          className="mt-4 text-sm bg-muted p-2 rounded text-center cursor-pointer text-blue-500 hover:text-blue-700 hover:underline"
+          onClick={() => handleOpenFolder(wwwPath)}
+        >
           {wwwPath}
         </div>
       </div>

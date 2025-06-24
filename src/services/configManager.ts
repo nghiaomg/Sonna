@@ -63,4 +63,20 @@ export class ConfigManager {
       };
     }
   }
+
+  /**
+   * Select folder using system dialog
+   */
+  static async selectFolder(): Promise<string> {
+    if (!window.electronAPI) {
+      return '';
+    }
+    
+    try {
+      return await window.electronAPI.selectFolder();
+    } catch (error) {
+      console.error('Failed to select folder:', error);
+      return '';
+    }
+  }
 } 

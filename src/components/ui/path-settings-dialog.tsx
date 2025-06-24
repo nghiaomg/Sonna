@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from '@/components/ui/button';
 import { Folder, AlertCircle } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
+import { ConfigManager } from '@/services';
 
 interface PathSettingsDialogProps {
   open: boolean;
@@ -18,7 +19,6 @@ export function PathSettingsDialog({ open, onOpenChange, currentPath, onSave }: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setPath(currentPath);
@@ -32,15 +32,13 @@ export function PathSettingsDialog({ open, onOpenChange, currentPath, onSave }: 
   };
 
   const handleSelectFolder = async () => {
-    if (window.electronAPI) {
-      try {
-        const result = await window.electronAPI.selectFolder();
-        if (result && result !== '') {
-          setPath(result);
-        }
-      } catch (error) {
-        console.error('Failed to select folder:', error);
+    try {
+      const result = await ConfigManager.selectFolder();
+      if (result && result !== '') {
+        setPath(result);
       }
+    } catch (error) {
+      console.error('Failed to select folder:', error);
     }
   };
 

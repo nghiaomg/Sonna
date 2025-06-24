@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Minus, Square, X, Copy, ChevronDown, ArrowDown, Power } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,15 +16,13 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
   const { t } = useLanguage();
 
   useEffect(() => {
-    // Check if window is maximized on mount
     if (window.electronAPI) {
       window.electronAPI.isWindowMaximized().then(setIsMaximized);
     }
   }, []);
 
   useEffect(() => {
-    // Close menu when clicking outside
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = () => {
       if (showCloseMenu) {
         setShowCloseMenu(false);
       }

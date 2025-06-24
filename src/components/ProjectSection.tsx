@@ -1,9 +1,11 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Folder } from 'lucide-react';
 import type { Project } from '@/types';
 import { useLanguage } from '@/lib/language-context';
 import { ProjectList } from './ProjectList';
+import { ProjectManager } from '@/services';
 
 interface ProjectSectionProps {
   projects: Project[];
@@ -20,6 +22,10 @@ export const ProjectSection: React.FC<ProjectSectionProps> = ({
 }) => {
   const { t } = useLanguage();
   
+  const handleOpenWwwFolder = () => {
+    ProjectManager.openProjectFolder(wwwPath);
+  };
+  
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -28,6 +34,16 @@ export const ProjectSection: React.FC<ProjectSectionProps> = ({
           <CardDescription>
             {t.localProjectsDesc}
           </CardDescription>
+          <div className="flex items-center mt-2 text-sm">
+            <span className="text-muted-foreground mr-2">WWW:</span>
+            <span 
+              className="text-blue-500 hover:text-blue-700 hover:underline cursor-pointer flex items-center"
+              onClick={handleOpenWwwFolder}
+            >
+              <Folder className="w-3 h-3 mr-1" />
+              {wwwPath}
+            </span>
+          </div>
         </div>
         <Button 
           variant="outline" 

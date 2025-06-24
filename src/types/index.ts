@@ -44,6 +44,7 @@ export interface ElectronAPI {
   deleteService: (serviceName: string) => Promise<any>;
   openFolder: (path: string) => Promise<void>;
   openExternal: (url: string) => Promise<void>;
+  selectFolder: () => Promise<string>;
   changeInstallationPath: (path: string, moveFiles: boolean) => Promise<{
     success: boolean;
     newPath: string;
