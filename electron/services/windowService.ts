@@ -1,5 +1,6 @@
 import { BrowserWindow, app } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export class WindowService {
   private mainWindow: BrowserWindow | null = null;
@@ -22,6 +23,10 @@ export class WindowService {
       app.setAppUserModelId(process.execPath);
     }
     
+    // Determine the correct preload script path
+    const preloadPath = this.getPreloadPath();
+    console.log('Using preload path:', preloadPath);
+    
     this.mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -32,7 +37,10 @@ export class WindowService {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        preload: path.join(__dirname, '../preload.js'),
+        preload: preloadPath,
+        webSecurity: true,
+        allowRunningInsecureContent: false,
+        sandbox: true,
       },
       icon: iconPath,
       show: false,
@@ -50,6 +58,28 @@ export class WindowService {
     });
 
     return this.mainWindow;
+  }
+
+  // Find the correct preload script path
+  private getPreloadPath(): string {
+    // Try multiple possible locations for the preload script
+    const possiblePaths = [
+      path.join(__dirname, '../preload.js'),
+      path.join(__dirname, '../../electron/preload.js'),
+      path.join(__dirname, '../../../electron/preload.js'),
+      path.join(process.cwd(), 'electron/preload.js'),
+      path.join(app.getAppPath(), 'electron/preload.js')
+    ];
+    
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        return p;
+      }
+    }
+    
+    // If no path is found, return the default path and log a warning
+    console.warn('Could not find preload.js, using default path');
+    return path.join(__dirname, '../preload.js');
   }
 
   setupWindowEvents(onCloseCallback: () => void) {

@@ -9,7 +9,7 @@ export class ProjectManager {
    */
   static async getProjects(): Promise<{ projects: Project[], wwwPath: string }> {
     if (!window.electronAPI) {
-      return { projects: [], wwwPath: 'C:/sonna/www' };
+      return { projects: [], wwwPath: 'C:\\sonna\\www' };
     }
     
     try {
@@ -17,13 +17,13 @@ export class ProjectManager {
       if (result.success) {
         return {
           projects: result.projects || [],
-          wwwPath: result.wwwPath || 'C:/sonna/www'
+          wwwPath: result.wwwPath || 'C:\\sonna\\www'
         };
       }
-      return { projects: [], wwwPath: 'C:/sonna/www' };
+      return { projects: [], wwwPath: 'C:\\sonna\\www' };
     } catch (error) {
       console.error('Failed to load projects:', error);
-      return { projects: [], wwwPath: 'C:/sonna/www' };
+      return { projects: [], wwwPath: 'C:\\sonna\\www' };
     }
   }
 
@@ -32,11 +32,16 @@ export class ProjectManager {
    */
   static async openProjectFolder(projectPath: string): Promise<boolean> {
     if (!window.electronAPI) {
+      console.error('Electron API not available');
       return false;
     }
     
     try {
-      await window.electronAPI.openFolder(projectPath);
+      const result = await window.electronAPI.openFolder(projectPath);
+      if (!result.success) {
+        console.error('Failed to open folder:', result.error || 'Unknown error');
+        return false;
+      }
       return true;
     } catch (error) {
       console.error('Failed to open project folder:', error);

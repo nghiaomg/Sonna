@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Project management
   getProjects: () => ipcRenderer.invoke('get-projects'),
-  openFolder: (path: string) => shell.openPath(path),
+  openFolder: (path: string) => ipcRenderer.invoke('open-folder', path),
   openExternal: (url: string) => shell.openExternal(url),
   
   // Path management
@@ -53,7 +53,7 @@ declare global {
       startService: (serviceName: string) => Promise<any>;
       stopService: (serviceName: string) => Promise<any>;
       getProjects: () => Promise<any>;
-      openFolder: (path: string) => Promise<string>;
+      openFolder: (path: string) => Promise<any>;
       openExternal: (url: string) => Promise<void>;
       selectFolder: () => Promise<string>;
       changeInstallationPath: (newPath: string, moveFiles: boolean) => Promise<any>;

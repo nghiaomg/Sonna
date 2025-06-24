@@ -1,14 +1,12 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, session } from 'electron';
 import { ServiceManager } from './utils/service-manager';
 import { DownloadManager } from './utils/download-manager';
 import { ServiceConfigurator } from './utils/service-configurator';
 import { ConfigManager } from './utils/config-manager';
 import { AssetService, WindowService, TrayService, IpcService } from './services';
-
-// Application state
+  
 const isDev = process.env.NODE_ENV === 'development';
 
-// Initialize services
 const serviceManager = new ServiceManager();
 const configManager = new ConfigManager();
 const serviceConfigurator = new ServiceConfigurator();
@@ -24,14 +22,12 @@ const ipcService = new IpcService(
   windowService
 );
 
-// Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   console.log('Another instance is already running. Quitting...');
   app.quit();
 } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // Someone tried to run a second instance, focus our window
     if (windowService.getMainWindow()) {
       const mainWindow = windowService.getMainWindow();
       if (mainWindow?.isMinimized()) mainWindow.restore();
@@ -41,29 +37,34 @@ if (!gotTheLock) {
   });
 }
 
-// Set app icon early
 windowService.setAppIcon();
 
 app.whenReady().then(() => {
-  // Copy assets to app root for production builds
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const cspValue = isDev 
+      ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws:"
+      : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'";
+    
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [cspValue]
+      }
+    });
+  });
+  
   assetService.copyAssetsToAppRoot();
   
-  // Create main window
   const mainWindow = windowService.createWindow();
   
-  // Set main window for tray service
   trayService.setMainWindow(mainWindow);
   
-  // Create tray icon
   trayService.createTray();
   
-  // Setup window events
   windowService.setupWindowEvents(() => {
-    // Show tray notification on first minimize
     trayService.showMinimizeNotification();
   });
   
-  // Setup IPC handlers
   ipcService.setupIpcHandlers();
 
   app.on('activate', () => {
@@ -74,10 +75,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', async () => {
-  // Don't quit the app when all windows are closed if we have a tray
-  // Only quit if explicitly requested (isQuitting = true)
   if (windowService.getIsQuitting()) {
-    // Cleanup services before quitting
     await serviceManager.cleanup();
     
     if (process.platform !== 'darwin') {

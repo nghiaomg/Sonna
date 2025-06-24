@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog, shell } from 'electron';
 import { ServiceManager } from '../utils/service-manager';
 import { ConfigManager } from '../utils/config-manager';
 import { DownloadManager } from '../utils/download-manager';
@@ -50,12 +50,110 @@ export class IpcService {
 
     // Project handlers
     ipcMain.handle('get-projects', async () => {
-      return [];
+      try {
+        // Default path for projects
+        const wwwPath = 'C:\\sonna\\www';
+        
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(wwwPath)) {
+          fs.mkdirSync(wwwPath, { recursive: true });
+          console.log(`Created projects directory: ${wwwPath}`);
+        }
+        
+        // In a real implementation, this would scan the directory for projects
+        // For now, just return an empty array and the path
+        return {
+          success: true,
+          projects: [],
+          wwwPath: wwwPath
+        };
+      } catch (error) {
+        console.error('Error getting projects:', error);
+        return {
+          success: false,
+          projects: [],
+          wwwPath: 'C:\\sonna\\www',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    });
+
+    // Open folder handler
+    ipcMain.handle('open-folder', async (event, folderPath: string) => {
+      try {
+        console.log(`Attempting to open folder: ${folderPath}`);
+        
+        // Create the directory if it doesn't exist
+        if (!fs.existsSync(folderPath)) {
+          console.log(`Directory doesn't exist, creating: ${folderPath}`);
+          try {
+            fs.mkdirSync(folderPath, { recursive: true });
+            console.log(`Successfully created directory: ${folderPath}`);
+          } catch (dirError: any) {
+            console.error(`Failed to create directory: ${folderPath}`, dirError);
+            return { 
+              success: false, 
+              error: `Failed to create directory: ${dirError.message}` 
+            };
+          }
+        }
+        
+        // Verify the directory exists before trying to open it
+        if (!fs.existsSync(folderPath)) {
+          console.error(`Directory still doesn't exist after creation attempt: ${folderPath}`);
+          return { 
+            success: false, 
+            error: 'Failed to create directory: Path still doesn\'t exist after creation' 
+          };
+        }
+        
+        console.log(`Opening folder: ${folderPath}`);
+        const result = await shell.openPath(folderPath);
+        
+        if (result !== '') {
+          console.error(`Error opening folder: ${result}`);
+          return { success: false, error: result };
+        }
+        
+        console.log(`Successfully opened folder: ${folderPath}`);
+        return { success: true };
+      } catch (error: any) {
+        console.error('Failed to open folder:', error);
+        return { 
+          success: false, 
+          error: error.message || 'Unknown error opening folder' 
+        };
+      }
     });
 
     ipcMain.handle('create-virtual-host', async (event, config: any) => {
       console.log('Creating virtual host:', config);
       return { success: true, message: 'Virtual host created successfully' };
+    });
+
+    // Folder selection handler
+    ipcMain.handle('select-folder', async () => {
+      const mainWindow = this.windowService.getMainWindow();
+      if (!mainWindow) {
+        return '';
+      }
+      
+      const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory']
+      });
+      
+      if (result.canceled || result.filePaths.length === 0) {
+        return '';
+      }
+      
+      return result.filePaths[0];
+    });
+
+    // Path change handler
+    ipcMain.handle('change-installation-path', async (event, newPath: string, moveFiles: boolean) => {
+      // Implementation will depend on your ConfigManager implementation
+      // This is a placeholder
+      return { success: true, newPath };
     });
 
     // Window control handlers
