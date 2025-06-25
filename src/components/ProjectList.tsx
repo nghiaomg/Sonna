@@ -13,20 +13,20 @@ interface ProjectListProps {
   onRefresh: () => void;
 }
 
-export const ProjectList: React.FC<ProjectListProps> = ({ 
-  projects, 
+export const ProjectList: React.FC<ProjectListProps> = ({
+  projects,
   wwwPath,
 }) => {
   const { t } = useLanguage();
-  
+
   const handleOpenFolder = (projectPath: string) => {
     ProjectManager.openProjectFolder(projectPath);
   };
-  
+
   const handleOpenUrl = (url: string) => {
     ProjectManager.openProjectUrl(url);
   };
-  
+
   // Get icon for project type
   const getProjectTypeIcon = (type: string) => {
     switch (type) {
@@ -42,14 +42,14 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         return <Folder className="w-5 h-5" />;
     }
   };
-  
+
   if (projects.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Globe className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <p>{t.noProjectsFound}</p>
         <p className="text-sm">{t.noProjectsFoundDesc}</p>
-        <div 
+        <div
           className="mt-4 text-sm bg-muted p-2 rounded text-center cursor-pointer text-blue-500 hover:text-blue-700 hover:underline"
           onClick={() => handleOpenFolder(wwwPath)}
         >
@@ -58,7 +58,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
       </div>
     );
   }
-  
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {projects.map((project) => (

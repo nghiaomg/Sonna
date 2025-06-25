@@ -29,10 +29,10 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
     if (window.electronAPI) {
       setIsCleaningUp(true);
       setLastCleanupResult(null);
-      
+
       try {
         const result = await window.electronAPI.cleanupApplications();
-        
+
         if (result.success) {
           setLastCleanupResult(`✅ ${result.message}`);
           // Notify parent that all services were deleted
@@ -51,10 +51,10 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
   const handleDeleteService = async (serviceName: string) => {
     if (window.electronAPI) {
       setDeletingServices(prev => new Set(prev.add(serviceName)));
-      
+
       try {
         const result = await window.electronAPI.deleteService(serviceName);
-        
+
         if (result.success) {
           onServiceDeleted(serviceName);
         } else {
@@ -124,7 +124,7 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
           {lastCleanupResult && (
             <div className={cn(
               "p-3 rounded-lg text-sm",
-              lastCleanupResult.startsWith('✅') 
+              lastCleanupResult.startsWith('✅')
                 ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
                 : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
             )}>
@@ -138,7 +138,7 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
               <h4 className="font-medium">{t.individualServices}</h4>
               {installedServices.map((service) => {
                 const isDeleting = deletingServices.has(service.name);
-                
+
                 return (
                   <div key={service.name} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
@@ -150,7 +150,7 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
                         </p>
                       </div>
                     </div>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -161,12 +161,12 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
                       {isDeleting ? (
                         <>
                           <Loader2 className="w-3 h-3 animate-spin" />
-                            {t.deleting}
+                          {t.deleting}
                         </>
                       ) : (
                         <>
                           <Trash2 className="w-3 h-3" />
-                            {t.delete}
+                          {t.delete}
                         </>
                       )}
                     </Button>

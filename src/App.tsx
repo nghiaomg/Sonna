@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Titlebar } from '@/components/ui/titlebar';
-import { DownloadManager } from '@/components/ui/download-manager';
-import { CleanupManager } from '@/components/ui/cleanup-manager';
-import { Settings } from '@/components/ui/settings';
-import { PortSettingsDialog } from '@/components/ui/port-settings-dialog';
+import { Titlebar } from '@/components/layout';
+import { DownloadManager, CleanupManager } from '@/components/management';
+import { Settings, PortSettingsDialog } from '@/components/settings';
 import { Server, Database, Globe, Code, Download, Trash2, Settings as SettingsIcon, Moon, Sun } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { getLogoPath } from '@/lib/asset-helper';
@@ -14,7 +12,7 @@ import type { Service, Project } from '@/types';
 
 function App() {
   const { t } = useLanguage();
-  
+
   // Services state
   const [services, setServices] = useState<Service[]>([
     { name: 'apache', displayName: 'Apache', icon: <Server className="w-5 h-5" />, running: false, port: 80, installed: false },
@@ -75,6 +73,7 @@ function App() {
   // Load service configurations
   const loadServiceConfigurations = async () => {
     const servicesList = await ConfigManager.getDownloadServices();
+    console.log('Download services loaded:', servicesList);
     setDownloadServices(servicesList);
   };
 
@@ -105,7 +104,7 @@ function App() {
     <div className="min-h-screen bg-background">
       {/* Custom Titlebar */}
       <Titlebar title={`${t.appTitle} - ${t.appSubtitle}`} />
-      
+
       {/* Header */}
       <header className="border-b bg-card">
         <div className="flex h-16 items-center justify-between px-6">
@@ -114,36 +113,36 @@ function App() {
             <h1 className="text-xl font-bold">{t.appTitle}</h1>
             <span className="text-sm text-muted-foreground">{t.appSubtitle}</span>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <Button variant="outline" size="sm" onClick={() => setDarkMode(!darkMode)}>
               {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
-            <Button 
-              variant={activeTab === 'services' ? 'default' : 'outline'} 
+            <Button
+              variant={activeTab === 'services' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setActiveTab('services')}
             >
               {t.services}
             </Button>
-            <Button 
-              variant={activeTab === 'install' ? 'default' : 'outline'} 
+            <Button
+              variant={activeTab === 'install' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setActiveTab('install')}
             >
               <Download className="w-4 h-4 mr-2" />
               {t.install}
             </Button>
-            <Button 
-              variant={activeTab === 'cleanup' ? 'default' : 'outline'} 
+            <Button
+              variant={activeTab === 'cleanup' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setActiveTab('cleanup')}
             >
               <Trash2 className="w-4 h-4 mr-2" />
               {t.cleanup}
             </Button>
-            <Button 
-              variant={activeTab === 'settings' ? 'default' : 'outline'} 
+            <Button
+              variant={activeTab === 'settings' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setActiveTab('settings')}
             >
@@ -161,30 +160,30 @@ function App() {
       <main className="p-6">
         <div className="max-w-6xl mx-auto space-y-6">
           {activeTab === 'install' && (
-            <DownloadManager 
+            <DownloadManager
               services={downloadServices}
               onServiceInstalled={handleServiceInstalled}
             />
           )}
-          
+
           {activeTab === 'cleanup' && (
-            <CleanupManager 
+            <CleanupManager
               services={downloadServices}
               onServiceDeleted={handleServiceDeleted}
             />
           )}
-          
+
           {activeTab === 'settings' && (
-            <Settings 
+            <Settings
               darkMode={darkMode}
               onToggleDarkMode={() => setDarkMode(!darkMode)}
             />
           )}
-          
+
           {activeTab === 'services' && (
             <>
               {/* Service Control Panel */}
-              <ServiceControl 
+              <ServiceControl
                 services={services}
                 onServiceUpdate={setServices}
                 onPortSettingsClick={() => setPortSettingsOpen(true)}
@@ -192,7 +191,7 @@ function App() {
               />
 
               {/* Projects Section */}
-              <ProjectSection 
+              <ProjectSection
                 projects={projects}
                 wwwPath={wwwPath}
                 isLoading={projectsLoading}

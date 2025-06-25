@@ -21,11 +21,11 @@ export const ProjectSection: React.FC<ProjectSectionProps> = ({
   onRefresh
 }) => {
   const { t } = useLanguage();
-  
+
   const handleOpenWwwFolder = () => {
     ProjectManager.openProjectFolder(wwwPath);
   };
-  
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -36,7 +36,7 @@ export const ProjectSection: React.FC<ProjectSectionProps> = ({
           </CardDescription>
           <div className="flex items-center mt-2 text-sm">
             <span className="text-muted-foreground mr-2">WWW:</span>
-            <span 
+            <span
               className="text-blue-500 hover:text-blue-700 hover:underline cursor-pointer flex items-center"
               onClick={handleOpenWwwFolder}
             >
@@ -45,9 +45,9 @@ export const ProjectSection: React.FC<ProjectSectionProps> = ({
             </span>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={onRefresh}
           disabled={isLoading}
         >
@@ -55,8 +55,8 @@ export const ProjectSection: React.FC<ProjectSectionProps> = ({
         </Button>
       </CardHeader>
       <CardContent>
-        <ProjectList 
-          projects={projects} 
+        <ProjectList
+          projects={projects}
           wwwPath={wwwPath}
           isLoading={isLoading}
           onRefresh={onRefresh}

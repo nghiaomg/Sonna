@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './dialog';
-import { Button } from './button';
-import { Input } from './input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Search, Plus } from 'lucide-react';
 import type { Service } from '@/types';
 import { useLanguage } from '@/lib/language-context';
@@ -21,11 +21,11 @@ export function ServiceSelectionDialog({
 }: ServiceSelectionDialogProps) {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const filteredServices = availableServices.filter(service => 
+
+  const filteredServices = availableServices.filter(service =>
     service.displayName.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -35,7 +35,7 @@ export function ServiceSelectionDialog({
             {t.selectServiceDesc}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex items-center space-x-2 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -47,7 +47,7 @@ export function ServiceSelectionDialog({
             />
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto p-1">
           {filteredServices.length > 0 ? (
             filteredServices.map(service => (

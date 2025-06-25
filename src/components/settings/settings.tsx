@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Settings as SettingsIcon, Globe, Monitor, Sun, Moon, FolderCog } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import type { Language } from '@/lib/language-context';
-import { PathSettingsDialog } from './path-settings-dialog';
-import { SearchableSelect } from './select';
+import { PathSettingsDialog } from '@/components/settings/path-settings-dialog';
+import { SearchableSelect } from '@/components/ui/select';
 
 interface SettingsProps {
   darkMode: boolean;

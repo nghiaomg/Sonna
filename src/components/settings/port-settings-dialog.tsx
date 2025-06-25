@@ -36,9 +36,9 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
         if (configResult.success && configResult.config) {
           // Filter only services with ports
           const portServices: PortConfig[] = [];
-          
+
           const { apache, nginx, mysql, mongodb, redis } = configResult.config.services;
-          
+
           if (apache) {
             portServices.push({
               name: apache.name,
@@ -48,7 +48,7 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
               icon: <Server className="w-5 h-5" />
             });
           }
-          
+
           if (nginx) {
             portServices.push({
               name: nginx.name,
@@ -58,7 +58,7 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
               icon: <Globe className="w-5 h-5" />
             });
           }
-          
+
           if (mysql) {
             portServices.push({
               name: mysql.name,
@@ -68,7 +68,7 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
               icon: <Database className="w-5 h-5" />
             });
           }
-          
+
           if (mongodb) {
             portServices.push({
               name: mongodb.name,
@@ -78,7 +78,7 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
               icon: <Database className="w-5 h-5" />
             });
           }
-          
+
           if (redis) {
             portServices.push({
               name: redis.name,
@@ -88,7 +88,7 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
               icon: <Database className="w-5 h-5" />
             });
           }
-          
+
           setServices(portServices);
         }
       } catch (error) {
@@ -99,9 +99,9 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
 
   const handlePortChange = (serviceName: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const newPort = parseInt(e.target.value, 10);
-    
-    setServices(prevServices => 
-      prevServices.map(service => 
+
+    setServices(prevServices =>
+      prevServices.map(service =>
         service.name === serviceName ? { ...service, port: newPort } : service
       )
     );
@@ -110,14 +110,14 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
   const handleSavePort = async (serviceName: string) => {
     const service = services.find(s => s.name === serviceName);
     if (!service) return;
-    
+
     setLoading(true);
     setMessage({ text: '', type: '' });
-    
+
     try {
       await updateConfig(serviceName, service.port);
       setMessage({ text: `${service.displayName} port updated successfully`, type: 'success' });
-      
+
       // Reload services after short delay
       setTimeout(() => {
         loadServiceConfigurations();
@@ -147,7 +147,7 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
               }
             }
           };
-          
+
           // Save updated config
           return await window.electronAPI.updateConfig(updatedConfig);
         } else {
@@ -165,9 +165,9 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
   const handleResetPort = (serviceName: string) => {
     const service = services.find(s => s.name === serviceName);
     if (!service) return;
-    
-    setServices(prevServices => 
-      prevServices.map(s => 
+
+    setServices(prevServices =>
+      prevServices.map(s =>
         s.name === serviceName ? { ...s, port: s.defaultPort } : s
       )
     );
@@ -185,13 +185,13 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
             {t.portSettingsDesc}
           </DialogDescription>
         </DialogHeader>
-        
+
         {message.text && (
           <div className={`mb-4 p-3 rounded ${message.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
             {message.text}
           </div>
         )}
-        
+
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
           {services.map((service) => (
             <div key={service.name} className="flex items-center justify-between border-b pb-3">
@@ -206,7 +206,7 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -216,15 +216,15 @@ export function PortSettingsDialog({ open, onOpenChange }: PortSettingsDialogPro
                   min="1"
                   max="65535"
                 />
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => handleResetPort(service.name)}
                 >
                   {t.reset}
                 </Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   onClick={() => handleSavePort(service.name)}
                   disabled={loading}
                 >

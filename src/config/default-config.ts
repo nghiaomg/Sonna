@@ -6,25 +6,100 @@ export const DEFAULT_CONFIG: SonnaConfig = {
   wwwPath: "C:/sonna/www",
   services: {
     php: {
-      name: "php",
-      displayName: "PHP",
-      version: "8.3.0",
-      downloadUrl: "https://windows.php.net/downloads/releases/php-8.3.0-Win32-vs16-x64.zip",
-      extractPath: "C:/sonna/applications/php",
-      executable: "php.exe",
-      configFile: "php.ini",
-      installed: false,
-      running: false
+      versions: {
+        "8.4.8": {
+          name: "php",
+          displayName: "PHP 8.4",
+          version: "8.4.8",
+          downloadUrl: "https://windows.php.net/downloads/releases/php-8.4.8-nts-Win32-vs17-x64.zip",
+          extractPath: "C:/sonna/applications/php/8.4",
+          executable: "php.exe",
+          configFile: "php.ini",
+          installed: false,
+          running: false,
+          isDefault: true
+        },
+        "8.3.22": {
+          name: "php",
+          displayName: "PHP 8.3",
+          version: "8.3.0",
+          downloadUrl: "https://windows.php.net/downloads/releases/php-8.3.22-Win32-vs16-x64.zip",
+          extractPath: "C:/sonna/applications/php/8.3.0",
+          executable: "php.exe",
+          configFile: "php.ini",
+          installed: false,
+          running: false
+        },
+        "8.2.28": {
+          name: "php",
+          displayName: "PHP 8.2",
+          version: "8.2.15",
+          downloadUrl: "https://windows.php.net/downloads/releases/php-8.2.28-nts-Win32-vs16-x64.zip",
+          extractPath: "C:/sonna/applications/php/8.2.15",
+          executable: "php.exe",
+          configFile: "php.ini",
+          installed: false,
+          running: false
+        },
+        "7.4 latest": {
+          name: "php",
+          displayName: "PHP 7.4",
+          version: "7.4",
+          downloadUrl: "https://windows.php.net/downloads/releases/latest/php-7.4-nts-Win32-vc15-x64-latest.zip",
+          extractPath: "C:/sonna/applications/php/7.4",
+          executable: "php.exe",
+          configFile: "php.ini",
+          installed: false,
+          running: false
+        }
+      },
+      current: "8.3.0"
     },
     nodejs: {
-      name: "nodejs",
-      displayName: "Node.js",
-      version: "20.11.0",
-      downloadUrl: "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip",
-      extractPath: "C:/sonna/applications/nodejs",
-      executable: "node.exe",
-      installed: false,
-      running: false
+      versions: {
+        "20.11.0": {
+          name: "nodejs",
+          displayName: "Node.js 20",
+          version: "20.11.0",
+          downloadUrl: "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip",
+          extractPath: "C:/sonna/applications/nodejs/20.11.0",
+          executable: "node.exe",
+          installed: false,
+          running: false,
+          isDefault: true
+        },
+        "18.19.0": {
+          name: "nodejs",
+          displayName: "Node.js 18",
+          version: "18.19.0",
+          downloadUrl: "https://nodejs.org/dist/v18.19.0/node-v18.19.0-win-x64.zip",
+          extractPath: "C:/sonna/applications/nodejs/18.19.0",
+          executable: "node.exe",
+          installed: false,
+          running: false
+        },
+        "16.20.2": {
+          name: "nodejs",
+          displayName: "Node.js 16",
+          version: "16.20.2",
+          downloadUrl: "https://nodejs.org/dist/v16.20.2/node-v16.20.2-win-x64.zip",
+          extractPath: "C:/sonna/applications/nodejs/16.20.2",
+          executable: "node.exe",
+          installed: false,
+          running: false
+        },
+        "14.21.3": {
+          name: "nodejs",
+          displayName: "Node.js 14",
+          version: "14.21.3",
+          downloadUrl: "https://nodejs.org/dist/v14.21.3/node-v14.21.3-win-x64.zip",
+          extractPath: "C:/sonna/applications/nodejs/14.21.3",
+          executable: "node.exe",
+          installed: false,
+          running: false
+        }
+      },
+      current: "20.11.0"
     },
     apache: {
       name: "apache",
@@ -101,6 +176,8 @@ export const DEFAULT_CONFIG: SonnaConfig = {
   settings: {
     autoStart: [],
     defaultPHPVersion: "8.3.0",
+    defaultNodeVersion: "20.11.0",
     defaultPort: 80
-  }
+  },
+  projectSettings: {}
 }; 

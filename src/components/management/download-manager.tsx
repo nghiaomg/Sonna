@@ -39,7 +39,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
     if (window.electronAPI) {
       window.electronAPI.onDownloadProgress((event: any, progress: DownloadProgress) => {
         setDownloads(prev => new Map(prev.set(progress.serviceName, progress)));
-        
+
         if (progress.status === 'completed') {
           onServiceInstalled(progress.serviceName);
         }
@@ -139,20 +139,23 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-                  {services.map((service) => {
-          const download = downloads.get(service.name);
-          const isDownloading = download && ['downloading', 'extracting', 'setup'].includes(download.status);
-          const isCompleted = service.installed || download?.status === 'completed';
-            
+          {services.map((service, index) => {
+            const download = downloads.get(service.name);
+            const isDownloading = download && ['downloading', 'extracting', 'setup'].includes(download.status);
+            const isCompleted = service.installed || download?.status === 'completed';
+
             return (
-              <div key={service.name} className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg gap-4">
+              <div 
+                key={`service-${service.name}-${service.version || 'unknown'}-${index}`} 
+                className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg gap-4"
+              >
                 <div className="flex items-center space-x-3 md:w-1/4 mb-2 md:mb-0">
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(download?.status || '')}
                     <div>
-                      <h3 className="font-medium">{service.displayName}</h3>
+                      <h3 className="font-medium">{service.displayName || service.name || 'Unknown Service'}</h3>
                       <p className="text-sm text-muted-foreground">
-                        Version {service.version}
+                        Version {service.version || 'Unknown'}
                       </p>
                     </div>
                   </div>
@@ -172,12 +175,12 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                         )}
                       </div>
                       {(download.status === 'downloading' || download.status === 'extracting' || download.status === 'setup') && (
-                        <Progress 
-                          value={download.status === 'downloading' ? download.progress : 100} 
+                        <Progress
+                          value={download.status === 'downloading' ? download.progress : 100}
                           variant={
                             download.status === 'downloading' ? 'default' :
-                            download.status === 'extracting' ? 'warning' :
-                            download.status === 'setup' ? 'success' : 'default'
+                              download.status === 'extracting' ? 'warning' :
+                                download.status === 'setup' ? 'success' : 'default'
                           }
                           className="h-2"
                         />

@@ -4,7 +4,7 @@ import { DownloadManager } from './utils/download-manager';
 import { ServiceConfigurator } from './utils/service-configurator';
 import { ConfigManager } from './utils/config-manager';
 import { AssetService, WindowService, TrayService, IpcService } from './services';
-  
+
 const isDev = process.env.NODE_ENV === 'development';
 
 const serviceManager = new ServiceManager();
@@ -26,7 +26,7 @@ const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   console.log('Another instance is already running. Quitting...');
   app.quit();
-} else {
+      } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
     if (windowService.getMainWindow()) {
       const mainWindow = windowService.getMainWindow();
@@ -82,4 +82,4 @@ app.on('window-all-closed', async () => {
       app.quit();
     }
   }
-}); 
+});

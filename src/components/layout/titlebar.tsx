@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Minus, Square, X, Copy, ChevronDown, ArrowDown, Power } from 'lucide-react';
+import { Minus, Square, X, Copy, ArrowDown, Power } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/language-context';
 import { getLogoPath } from '@/lib/asset-helper';
@@ -53,15 +53,12 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
 
   const handleClose = async () => {
     if (window.electronAPI) {
-      // First check if any services are running
       const servicesStatus = await window.electronAPI.getServicesStatus();
       const hasRunningServices = Object.values(servicesStatus).some((service: any) => service.running);
-      
+
       if (hasRunningServices) {
-        // If services are running, hide to tray instead of closing
         await window.electronAPI.hideToTray();
       } else {
-        // If no services are running, quit the app
         await window.electronAPI.quitApp();
       }
     }
@@ -103,7 +100,7 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
         >
           <Minus className="w-4 h-4" />
         </Button>
-        
+
         <Button
           variant="ghost"
           size="sm"
@@ -116,7 +113,7 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
             <Square className="w-3 h-3" />
           )}
         </Button>
-        
+
         <div className="relative">
           <Button
             variant="ghost"
@@ -126,16 +123,15 @@ export function Titlebar({ title = "Sonna", className }: TitlebarProps) {
           >
             <X className="w-4 h-4" />
           </Button>
-          
+
           <Button
             variant="ghost"
             size="sm"
             className="h-8 w-6 rounded-none hover:bg-muted no-drag p-0 absolute right-12 top-0"
             onClick={() => setShowCloseMenu(!showCloseMenu)}
           >
-            <ChevronDown className="w-3 h-3" />
           </Button>
-          
+
           {showCloseMenu && (
             <div className="absolute right-0 top-8 bg-background border border-border rounded-md shadow-lg z-50 min-w-[180px] no-drag">
               <div className="py-1">

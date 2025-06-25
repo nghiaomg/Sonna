@@ -11,13 +11,23 @@ export interface ServiceConfig {
   running: boolean;
 }
 
+export interface VersionedServiceConfig extends ServiceConfig {
+  isDefault?: boolean;
+}
+
 export interface SonnaConfig {
   version: string;
   installPath: string;
   wwwPath: string;
   services: {
-    php: ServiceConfig;
-    nodejs: ServiceConfig;
+    php: {
+      versions: Record<string, VersionedServiceConfig>;
+      current: string;
+    };
+    nodejs: {
+      versions: Record<string, VersionedServiceConfig>;
+      current: string;
+    };
     apache: ServiceConfig;
     nginx: ServiceConfig;
     mysql: ServiceConfig;
@@ -28,8 +38,13 @@ export interface SonnaConfig {
   settings: {
     autoStart: string[];
     defaultPHPVersion: string;
+    defaultNodeVersion: string;
     defaultPort: number;
   };
+  projectSettings: Record<string, {
+    phpVersion?: string;
+    nodeVersion?: string;
+  }>;
 }
 
 export interface DownloadProgress {

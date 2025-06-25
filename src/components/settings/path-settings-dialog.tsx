@@ -149,7 +149,7 @@ export function PathSettingsDialog({ open, onOpenChange, currentPath, onSave }: 
                   </div>
                 </div>
               </div>
-              
+
               {error && (
                 <div className="text-sm text-red-500 flex items-center gap-1 mt-1">
                   <AlertCircle className="h-4 w-4" />
@@ -160,24 +160,24 @@ export function PathSettingsDialog({ open, onOpenChange, currentPath, onSave }: 
 
             <DialogFooter className="flex-col space-y-2 sm:space-y-0">
               <div className="flex flex-col sm:flex-row gap-2 w-full">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setShowMoveConfirm(false)}
                   className="sm:flex-1"
                   disabled={loading}
                 >
                   {t.back || "Back"}
                 </Button>
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   onClick={() => handleConfirmMove(true)}
                   className="sm:flex-1"
                   disabled={loading}
                 >
                   {loading ? t.moving || "Moving..." : t.moveFiles || "Move Files"}
                 </Button>
-                <Button 
-                  variant="secondary" 
+                <Button
+                  variant="secondary"
                   onClick={() => handleConfirmMove(false)}
                   className="sm:flex-1"
                   disabled={loading}

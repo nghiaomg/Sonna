@@ -22,12 +22,12 @@ export const ServiceControl: React.FC<ServiceControlProps> = ({
 }) => {
   const { t } = useLanguage();
   const [isEditMode, setIsEditMode] = useState(false);
-  
+
   // Check if any service is running
   const hasRunningServices = useMemo(() => {
     return services.some(service => service.running);
   }, [services]);
-  
+
   const handleToggleAllServices = async () => {
     if (hasRunningServices) {
       // Stop all services if any are running
@@ -36,12 +36,12 @@ export const ServiceControl: React.FC<ServiceControlProps> = ({
       // Start all services if none are running
       await ServiceManager.startAllServices(services);
     }
-    
+
     // Refresh services status
     const updatedServices = await ServiceManager.getServicesStatus(services);
     onServiceUpdate(updatedServices);
   };
-  
+
   return (
     <Card>
       <CardHeader>
@@ -53,8 +53,8 @@ export const ServiceControl: React.FC<ServiceControlProps> = ({
       <CardContent>
         <div className="flex justify-between items-center mb-2">
           <div className="flex space-x-4 mb-6">
-            <Button 
-              onClick={handleToggleAllServices} 
+            <Button
+              onClick={handleToggleAllServices}
               variant={hasRunningServices ? "destructive" : "default"}
               className="flex items-center"
             >
@@ -75,8 +75,8 @@ export const ServiceControl: React.FC<ServiceControlProps> = ({
               {t.portSettings}
             </Button>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setIsEditMode(!isEditMode)}
             className="flex items-center"
           >
@@ -94,8 +94,8 @@ export const ServiceControl: React.FC<ServiceControlProps> = ({
           </Button>
         </div>
 
-        <ServiceList 
-          services={services} 
+        <ServiceList
+          services={services}
           onServiceUpdate={onServiceUpdate}
           onInstallClick={onInstallClick}
           isEditMode={isEditMode}

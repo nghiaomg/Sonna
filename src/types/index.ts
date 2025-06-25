@@ -4,10 +4,13 @@ export * from './config';
 export interface Service {
   name: string;
   displayName: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   running: boolean;
   port?: number;
   installed: boolean;
+  version?: string;
+  isDefault?: boolean;
+  isActive?: boolean;
 }
 
 export interface Project {
@@ -16,6 +19,8 @@ export interface Project {
   url: string;
   type: string;
   hasIndex: boolean;
+  phpVersion?: string;
+  nodeVersion?: string;
 }
 
 export interface ElectronAPI {
@@ -36,6 +41,7 @@ export interface ElectronAPI {
   quitApp: () => Promise<void>;
   initializeSonna: () => Promise<any>;
   getSonnaConfig: () => Promise<any>;
+  updateConfig: (config: any) => Promise<{ success: boolean; message?: string }>;
   downloadService: (serviceName: string) => Promise<any>;
   onDownloadProgress: (callback: any) => void;
   resetInstallationStatus: () => Promise<any>;
@@ -50,5 +56,9 @@ export interface ElectronAPI {
     newPath: string;
     message?: string;
   }>;
+  setDefaultPHPVersion: (version: string) => Promise<{ success: boolean; message?: string }>;
+  setDefaultNodeVersion: (version: string) => Promise<{ success: boolean; message?: string }>;
+  setProjectPHPVersion: (projectPath: string, version: string) => Promise<{ success: boolean; message?: string }>;
+  setProjectNodeVersion: (projectPath: string, version: string) => Promise<{ success: boolean; message?: string }>;
   platform: string;
 } 

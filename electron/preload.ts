@@ -33,6 +33,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   initializeSonna: () => ipcRenderer.invoke('initialize-sonna'),
   getSonnaConfig: () => ipcRenderer.invoke('get-sonna-config'),
   updateConfig: (config: any) => ipcRenderer.invoke('update-config', config),
+  
+  // Version management
+  setDefaultPHPVersion: (version: string) => ipcRenderer.invoke('set-default-php-version', version),
+  setDefaultNodeVersion: (version: string) => ipcRenderer.invoke('set-default-node-version', version),
+  setProjectPHPVersion: (projectPath: string, version: string) => ipcRenderer.invoke('set-project-php-version', projectPath, version),
+  setProjectNodeVersion: (projectPath: string, version: string) => ipcRenderer.invoke('set-project-node-version', projectPath, version),
   downloadService: (serviceName: string) => ipcRenderer.invoke('download-service', serviceName),
   onDownloadProgress: (callback: any) => ipcRenderer.on('download-progress', callback),
   removeDownloadProgressListener: (callback: any) => ipcRenderer.removeListener('download-progress', callback),
@@ -67,6 +73,10 @@ declare global {
       initializeSonna: () => Promise<any>;
       getSonnaConfig: () => Promise<any>;
       updateConfig: (config: any) => Promise<any>;
+      setDefaultPHPVersion: (version: string) => Promise<any>;
+      setDefaultNodeVersion: (version: string) => Promise<any>;
+      setProjectPHPVersion: (projectPath: string, version: string) => Promise<any>;
+      setProjectNodeVersion: (projectPath: string, version: string) => Promise<any>;
       downloadService: (serviceName: string) => Promise<any>;
       onDownloadProgress: (callback: any) => void;
       removeDownloadProgressListener: (callback: any) => void;

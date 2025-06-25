@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, X, Plus, Edit, Check } from 'lucide-react';
+import { Download, X, Plus } from 'lucide-react';
 import type { Service } from '@/types';
 import { useLanguage } from '@/lib/language-context';
 import { ServiceManager } from '@/services';
-import { ServiceSelectionDialog } from './ui/service-selection-dialog';
+import { ServiceSelectionDialog } from './services/service-selection-dialog';
 
 interface ServiceListProps {
   services: Service[];
@@ -14,8 +14,8 @@ interface ServiceListProps {
   isEditMode?: boolean;
 }
 
-export const ServiceList: React.FC<ServiceListProps> = ({ 
-  services, 
+export const ServiceList: React.FC<ServiceListProps> = ({
+  services,
   onServiceUpdate,
   onInstallClick,
   isEditMode = false
@@ -23,8 +23,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
   const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [emptySlotIndex, setEmptySlotIndex] = useState<number | null>(null);
-  
-  // Available services that can be added (this would come from a configuration)
+
   const availableServices: Service[] = [
     {
       name: 'apache',
@@ -83,30 +82,30 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       installed: false
     }
   ];
-  
+
   const handleToggleService = async (serviceName: string, isRunning: boolean) => {
     if (isEditMode) return; // Prevent toggling services in edit mode
-    
+
     const success = await ServiceManager.toggleService(serviceName, isRunning);
-    
+
     if (success) {
-      const updatedServices = services.map(service => 
-        service.name === serviceName 
-          ? { ...service, running: !isRunning } 
+      const updatedServices = services.map(service =>
+        service.name === serviceName
+          ? { ...service, running: !isRunning }
           : service
       );
       onServiceUpdate(updatedServices);
     }
   };
-  
+
   const handleRemoveService = (index: number) => {
     if (!isEditMode) return;
-    
+
     const updatedServices = [...services];
     updatedServices.splice(index, 1);
     onServiceUpdate(updatedServices);
   };
-  
+
   const handleAddService = (service: Service) => {
     if (emptySlotIndex !== null) {
       const updatedServices = [...services];
@@ -117,12 +116,12 @@ export const ServiceList: React.FC<ServiceListProps> = ({
       onServiceUpdate([...services, service]);
     }
   };
-  
+
   const handleAddClick = (index?: number) => {
     setEmptySlotIndex(index !== undefined ? index : null);
     setIsDialogOpen(true);
   };
-  
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -139,13 +138,12 @@ export const ServiceList: React.FC<ServiceListProps> = ({
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                       {!isEditMode && (
                         <>
-                          <span className={`inline-block w-2 h-2 rounded-full ${
-                            !service.installed ? 'bg-gray-400' : 
-                            service.running ? 'bg-green-500' : 'bg-red-500'
-                          }`}></span>
+                          <span className={`inline-block w-2 h-2 rounded-full ${!service.installed ? 'bg-gray-400' :
+                              service.running ? 'bg-green-500' : 'bg-red-500'
+                            }`}></span>
                           <span>
-                            {!service.installed ? t.notInstalled : 
-                            service.running ? t.running : t.stopped}
+                            {!service.installed ? t.notInstalled :
+                              service.running ? t.running : t.stopped}
                           </span>
                           {service.port && service.running && (
                             <span>:{service.port}</span>
@@ -199,7 +197,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
             </CardContent>
           </Card>
         ))}
-        
+
         {isEditMode && (
           <Card className="border-dashed border-2 hover:border-primary/50 transition-all cursor-pointer" onClick={() => handleAddClick()}>
             <CardContent className="p-4 flex items-center justify-center h-full min-h-[100px]">
@@ -211,7 +209,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({
           </Card>
         )}
       </div>
-      
+
       <ServiceSelectionDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}

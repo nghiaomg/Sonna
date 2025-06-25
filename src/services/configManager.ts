@@ -30,14 +30,61 @@ export class ConfigManager {
    */
   static async getDownloadServices(): Promise<any[]> {
     const config = await this.getSonnaConfig();
+    const services: any[] = [];
     
-    return Object.values(config.services).map((service: ServiceConfig) => ({
-      name: service.name,
-      displayName: service.displayName,
-      version: service.version,
-      installed: service.installed,
-      downloadUrl: service.downloadUrl
-    }));
+    try {
+      // Add PHP versions
+      if (config.services.php && config.services.php.versions) {
+        Object.entries(config.services.php.versions).forEach(([version, phpConfig]) => {
+          services.push({
+            name: `php-${version}`,
+            displayName: phpConfig.displayName || `PHP ${version}`,
+            version: phpConfig.version || version,
+            installed: phpConfig.installed || false,
+            downloadUrl: phpConfig.downloadUrl || ''
+          });
+        });
+      }
+      
+      // Add Node.js versions
+      if (config.services.nodejs && config.services.nodejs.versions) {
+        Object.entries(config.services.nodejs.versions).forEach(([version, nodeConfig]) => {
+          services.push({
+            name: `nodejs-${version}`,
+            displayName: nodeConfig.displayName || `Node.js ${version}`,
+            version: nodeConfig.version || version,
+            installed: nodeConfig.installed || false,
+            downloadUrl: nodeConfig.downloadUrl || ''
+          });
+        });
+      }
+      
+      // Add other services (non-versioned)
+      const otherServices = ['apache', 'nginx', 'mysql', 'mongodb', 'phpmyadmin', 'redis'];
+      otherServices.forEach(serviceName => {
+        const service = (config.services as any)[serviceName];
+        if (service) {
+          services.push({
+            name: service.name || serviceName,
+            displayName: service.displayName || serviceName,
+            version: service.version || 'latest',
+            installed: service.installed || false,
+            downloadUrl: service.downloadUrl || ''
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Error processing services:', error);
+      // Return fallback services if there's an error
+      return [
+        { name: 'apache', displayName: 'Apache', version: '2.4.63', installed: false, downloadUrl: '' },
+        { name: 'mysql', displayName: 'MySQL', version: '8.0.35', installed: false, downloadUrl: '' },
+        { name: 'php-8.3.0', displayName: 'PHP 8.3', version: '8.3.0', installed: false, downloadUrl: '' },
+        { name: 'nodejs-20.11.0', displayName: 'Node.js 20', version: '20.11.0', installed: false, downloadUrl: '' }
+      ];
+    }
+    
+    return services;
   }
 
   /**

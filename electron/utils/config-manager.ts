@@ -1,16 +1,51 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+export interface ServiceConfig {
+  name: string;
+  displayName: string;
+  version: string;
+  downloadUrl: string;
+  extractPath: string;
+  executable: string;
+  configFile?: string;
+  port?: number;
+  installed: boolean;
+  running: boolean;
+  isDefault?: boolean;
+}
+
 export interface SonnaConfig {
   version: string;
   installPath: string;
   wwwPath: string;
-  services: Record<string, any>;
+  services: {
+    php: {
+      versions: Record<string, ServiceConfig>;
+      current: string;
+    };
+    nodejs: {
+      versions: Record<string, ServiceConfig>;
+      current: string;
+    };
+    apache: ServiceConfig;
+    nginx: ServiceConfig;
+    mysql: ServiceConfig;
+    mongodb: ServiceConfig;
+    phpmyadmin: ServiceConfig;
+    redis: ServiceConfig;
+    [key: string]: any;
+  };
   settings: {
     autoStart: string[];
     defaultPHPVersion: string;
+    defaultNodeVersion: string;
     defaultPort: number;
   };
+  projectSettings: Record<string, {
+    phpVersion?: string;
+    nodeVersion?: string;
+  }>;
 }
 
 export class ConfigManager {
@@ -71,6 +106,16 @@ export class ConfigManager {
     }
   }
 
+  async saveConfig(config: SonnaConfig): Promise<{ success: boolean; message: string }> {
+    try {
+      fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
+      return { success: true, message: 'Config saved successfully' };
+    } catch (error) {
+      console.error('Failed to save config:', error);
+      return { success: false, message: `Failed to save config: ${error}` };
+    }
+  }
+
   async updateConfig(updates: Partial<SonnaConfig>): Promise<{ success: boolean; message: string }> {
     try {
       const currentConfig = await this.getConfig();
@@ -110,13 +155,30 @@ export class ConfigManager {
         return { success: false, message: 'Config file not found' };
       }
 
-      // Reset all services to not installed
-      for (const serviceName of Object.keys(configResult.config.services)) {
-        configResult.config.services[serviceName].installed = false;
-        configResult.config.services[serviceName].running = false;
+      const config = configResult.config;
+
+      // Reset PHP versions
+      for (const version in config.services.php.versions) {
+        config.services.php.versions[version].installed = false;
+        config.services.php.versions[version].running = false;
       }
 
-      fs.writeFileSync(this.configPath, JSON.stringify(configResult.config, null, 2));
+      // Reset Node.js versions
+      for (const version in config.services.nodejs.versions) {
+        config.services.nodejs.versions[version].installed = false;
+        config.services.nodejs.versions[version].running = false;
+      }
+
+      // Reset other services
+      const regularServices = ['apache', 'nginx', 'mysql', 'mongodb', 'phpmyadmin', 'redis'];
+      for (const serviceName of regularServices) {
+        if (config.services[serviceName]) {
+          config.services[serviceName].installed = false;
+          config.services[serviceName].running = false;
+        }
+      }
+
+      fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
       return { success: true, message: 'Installation status reset successfully' };
     } catch (error) {
       console.error('Failed to reset installation status:', error);
@@ -131,24 +193,100 @@ export class ConfigManager {
       wwwPath: wwwPath,
       services: {
         php: {
-          name: "php",
-          displayName: "PHP",
-          version: "8.3.0",
-          downloadUrl: "https://windows.php.net/downloads/releases/php-8.3.0-Win32-vs16-x64.zip",
-          extractPath: path.join(applicationsPath, 'php'),
-          executable: "php.exe",
-          installed: false,
-          running: false
+          versions: {
+            "8.3.0": {
+              name: "php",
+              displayName: "PHP 8.3",
+              version: "8.3.0",
+              downloadUrl: "https://windows.php.net/downloads/releases/php-8.3.0-Win32-vs16-x64.zip",
+              extractPath: path.join(applicationsPath, 'php/8.3.0'),
+              executable: "php.exe",
+              configFile: "php.ini",
+              installed: false,
+              running: false,
+              isDefault: true
+            },
+            "8.2.15": {
+              name: "php",
+              displayName: "PHP 8.2",
+              version: "8.2.15",
+              downloadUrl: "https://windows.php.net/downloads/releases/php-8.2.15-Win32-vs16-x64.zip",
+              extractPath: path.join(applicationsPath, 'php/8.2.15'),
+              executable: "php.exe",
+              configFile: "php.ini",
+              installed: false,
+              running: false
+            },
+            "7.4.33": {
+              name: "php",
+              displayName: "PHP 7.4",
+              version: "7.4.33",
+              downloadUrl: "https://windows.php.net/downloads/releases/php-7.4.33-Win32-vc15-x64.zip",
+              extractPath: path.join(applicationsPath, 'php/7.4.33'),
+              executable: "php.exe",
+              configFile: "php.ini",
+              installed: false,
+              running: false
+            },
+            "5.6.40": {
+              name: "php",
+              displayName: "PHP 5.6",
+              version: "5.6.40",
+              downloadUrl: "https://windows.php.net/downloads/releases/archives/php-5.6.40-Win32-VC11-x64.zip",
+              extractPath: path.join(applicationsPath, 'php/5.6.40'),
+              executable: "php.exe",
+              configFile: "php.ini",
+              installed: false,
+              running: false
+            }
+          },
+          current: "8.3.0"
         },
         nodejs: {
-          name: "nodejs",
-          displayName: "Node.js",
-          version: "20.11.0",
-          downloadUrl: "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip",
-          extractPath: path.join(applicationsPath, 'nodejs'),
-          executable: "node.exe",
-          installed: false,
-          running: false
+          versions: {
+            "20.11.0": {
+              name: "nodejs",
+              displayName: "Node.js 20",
+              version: "20.11.0",
+              downloadUrl: "https://nodejs.org/dist/v20.11.0/node-v20.11.0-win-x64.zip",
+              extractPath: path.join(applicationsPath, 'nodejs/20.11.0'),
+              executable: "node.exe",
+              installed: false,
+              running: false,
+              isDefault: true
+            },
+            "18.19.0": {
+              name: "nodejs",
+              displayName: "Node.js 18",
+              version: "18.19.0",
+              downloadUrl: "https://nodejs.org/dist/v18.19.0/node-v18.19.0-win-x64.zip",
+              extractPath: path.join(applicationsPath, 'nodejs/18.19.0'),
+              executable: "node.exe",
+              installed: false,
+              running: false
+            },
+            "16.20.2": {
+              name: "nodejs",
+              displayName: "Node.js 16",
+              version: "16.20.2",
+              downloadUrl: "https://nodejs.org/dist/v16.20.2/node-v16.20.2-win-x64.zip",
+              extractPath: path.join(applicationsPath, 'nodejs/16.20.2'),
+              executable: "node.exe",
+              installed: false,
+              running: false
+            },
+            "14.21.3": {
+              name: "nodejs",
+              displayName: "Node.js 14",
+              version: "14.21.3",
+              downloadUrl: "https://nodejs.org/dist/v14.21.3/node-v14.21.3-win-x64.zip",
+              extractPath: path.join(applicationsPath, 'nodejs/14.21.3'),
+              executable: "node.exe",
+              installed: false,
+              running: false
+            }
+          },
+          current: "20.11.0"
         },
         apache: {
           name: "apache",
@@ -157,6 +295,7 @@ export class ConfigManager {
           downloadUrl: "https://www.apachelounge.com/download/VS17/binaries/httpd-2.4.63-250207-win64-VS17.zip",
           extractPath: path.join(applicationsPath, 'apache'),
           executable: "bin/httpd.exe",
+          configFile: "conf/httpd.conf",
           port: 80,
           installed: false,
           running: false
@@ -168,6 +307,7 @@ export class ConfigManager {
           downloadUrl: "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.35-winx64.zip",
           extractPath: path.join(applicationsPath, 'mysql'),
           executable: "bin/mysqld.exe",
+          configFile: "my.ini",
           port: 3306,
           installed: false,
           running: false
@@ -179,7 +319,20 @@ export class ConfigManager {
           downloadUrl: "http://nginx.org/download/nginx-1.24.0.zip",
           extractPath: path.join(applicationsPath, 'nginx'),
           executable: "nginx.exe",
+          configFile: "conf/nginx.conf",
           port: 8080,
+          installed: false,
+          running: false
+        },
+        mongodb: {
+          name: "mongodb",
+          displayName: "MongoDB",
+          version: "7.0.4",
+          downloadUrl: "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.4.zip",
+          extractPath: path.join(applicationsPath, 'mongodb'),
+          executable: "bin/mongod.exe",
+          configFile: "mongod.conf",
+          port: 27017,
           installed: false,
           running: false
         },
@@ -190,6 +343,7 @@ export class ConfigManager {
           downloadUrl: "https://github.com/microsoftarchive/redis/releases/download/win-3.0.504/Redis-x64-3.0.504.zip",
           extractPath: path.join(applicationsPath, 'redis'),
           executable: "redis-server.exe",
+          configFile: "redis.conf",
           port: 6379,
           installed: false,
           running: false
@@ -201,6 +355,7 @@ export class ConfigManager {
           downloadUrl: "https://files.phpmyadmin.net/phpMyAdmin/5.2.1/phpMyAdmin-5.2.1-all-languages.zip",
           extractPath: path.join(wwwPath, 'phpmyadmin'),
           executable: "",
+          configFile: "config.inc.php",
           installed: false,
           running: false
         }
@@ -208,8 +363,10 @@ export class ConfigManager {
       settings: {
         autoStart: [],
         defaultPHPVersion: "8.3.0",
+        defaultNodeVersion: "20.11.0",
         defaultPort: 80
-      }
+      },
+      projectSettings: {}
     };
   }
 
@@ -296,11 +453,11 @@ export class ConfigManager {
             </div>
             <div class="feature">
                 <strong>🐘 PHP</strong><br>
-                Modern PHP versions
+                Multiple PHP versions
             </div>
             <div class="feature">
-                <strong>⚡ Fast</strong><br>
-                Optimized for speed
+                <strong>⚡ Node.js</strong><br>
+                Multiple Node.js versions
             </div>
         </div>
         

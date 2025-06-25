@@ -48,6 +48,145 @@ export class IpcService {
       return await this.serviceManager.stopService(serviceName);
     });
 
+    // PHP and Node.js version handlers
+    ipcMain.handle('set-default-php-version', async (event, version: string) => {
+      try {
+        const configResult = await this.configManager.getConfig();
+        if (!configResult.success || !configResult.config) {
+          return { success: false, message: 'Config file not found' };
+        }
+        
+        const config = configResult.config;
+        
+        // Check if version exists
+        if (!config.services.php.versions[version]) {
+          return { success: false, message: `PHP version ${version} not found` };
+        }
+        
+        // Update current version
+        config.services.php.current = version;
+        config.settings.defaultPHPVersion = version;
+        
+        // Save config
+        await this.configManager.saveConfig(config);
+        
+        return { success: true, message: `Default PHP version set to ${version}` };
+      } catch (error) {
+        console.error(`Failed to set default PHP version to ${version}:`, error);
+        return { success: false, message: `Failed to set default PHP version: ${error}` };
+      }
+    });
+
+    ipcMain.handle('set-default-node-version', async (event, version: string) => {
+      try {
+        const configResult = await this.configManager.getConfig();
+        if (!configResult.success || !configResult.config) {
+          return { success: false, message: 'Config file not found' };
+        }
+        
+        const config = configResult.config;
+        
+        // Check if version exists
+        if (!config.services.nodejs.versions[version]) {
+          return { success: false, message: `Node.js version ${version} not found` };
+        }
+        
+        // Update current version
+        config.services.nodejs.current = version;
+        config.settings.defaultNodeVersion = version;
+        
+        // Save config
+        await this.configManager.saveConfig(config);
+        
+        return { success: true, message: `Default Node.js version set to ${version}` };
+      } catch (error) {
+        console.error(`Failed to set default Node.js version to ${version}:`, error);
+        return { success: false, message: `Failed to set default Node.js version: ${error}` };
+      }
+    });
+
+    ipcMain.handle('set-project-php-version', async (event, projectPath: string, version: string) => {
+      try {
+        const configResult = await this.configManager.getConfig();
+        if (!configResult.success || !configResult.config) {
+          return { success: false, message: 'Config file not found' };
+        }
+        
+        const config = configResult.config;
+        
+        // Check if version exists
+        if (version && !config.services.php.versions[version]) {
+          return { success: false, message: `PHP version ${version} not found` };
+        }
+        
+        // Initialize project settings if needed
+        if (!config.projectSettings) {
+          config.projectSettings = {};
+        }
+        
+        if (!config.projectSettings[projectPath]) {
+          config.projectSettings[projectPath] = {};
+        }
+        
+        // Update project PHP version
+        config.projectSettings[projectPath].phpVersion = version || undefined;
+        
+        // Save config
+        await this.configManager.saveConfig(config);
+        
+        return { 
+          success: true, 
+          message: version 
+            ? `PHP version for project set to ${version}` 
+            : 'Project will use default PHP version'
+        };
+      } catch (error) {
+        console.error(`Failed to set PHP version for project ${projectPath}:`, error);
+        return { success: false, message: `Failed to set project PHP version: ${error}` };
+      }
+    });
+
+    ipcMain.handle('set-project-node-version', async (event, projectPath: string, version: string) => {
+      try {
+        const configResult = await this.configManager.getConfig();
+        if (!configResult.success || !configResult.config) {
+          return { success: false, message: 'Config file not found' };
+        }
+        
+        const config = configResult.config;
+        
+        // Check if version exists
+        if (version && !config.services.nodejs.versions[version]) {
+          return { success: false, message: `Node.js version ${version} not found` };
+        }
+        
+        // Initialize project settings if needed
+        if (!config.projectSettings) {
+          config.projectSettings = {};
+        }
+        
+        if (!config.projectSettings[projectPath]) {
+          config.projectSettings[projectPath] = {};
+        }
+        
+        // Update project Node.js version
+        config.projectSettings[projectPath].nodeVersion = version || undefined;
+        
+        // Save config
+        await this.configManager.saveConfig(config);
+        
+        return { 
+          success: true, 
+          message: version 
+            ? `Node.js version for project set to ${version}` 
+            : 'Project will use default Node.js version'
+        };
+      } catch (error) {
+        console.error(`Failed to set Node.js version for project ${projectPath}:`, error);
+        return { success: false, message: `Failed to set project Node.js version: ${error}` };
+      }
+    });
+
     // Project handlers
     ipcMain.handle('get-projects', async () => {
       try {
@@ -243,7 +382,19 @@ export class IpcService {
           return { success: false, message: 'Config file not found' };
         }
         
-        const service = configResult.config.services[serviceName];
+        const config = configResult.config;
+        let service;
+        
+        // Handle versioned services
+        if (serviceName.startsWith('php-')) {
+          const version = serviceName.replace('php-', '');
+          service = config.services.php.versions[version];
+        } else if (serviceName.startsWith('nodejs-')) {
+          const version = serviceName.replace('nodejs-', '');
+          service = config.services.nodejs.versions[version];
+        } else {
+          service = config.services[serviceName];
+        }
         
         if (!service) {
           return { success: false, message: 'Service not found in config' };
@@ -255,7 +406,17 @@ export class IpcService {
         }
         
         // Update config
-        await this.configManager.updateServiceStatus(serviceName, { installed: false, running: false });
+        if (serviceName.startsWith('php-')) {
+          const version = serviceName.replace('php-', '');
+          config.services.php.versions[version].installed = false;
+          config.services.php.versions[version].running = false;
+        } else if (serviceName.startsWith('nodejs-')) {
+          const version = serviceName.replace('nodejs-', '');
+          config.services.nodejs.versions[version].installed = false;
+          config.services.nodejs.versions[version].running = false;
+        } else {
+          await this.configManager.updateServiceStatus(serviceName, { installed: false, running: false });
+        }
         
         return { 
           success: true, 
@@ -276,6 +437,16 @@ export class IpcService {
       return await this.configManager.getConfig();
     });
 
+    ipcMain.handle('update-config', async (event, config: any) => {
+      try {
+        const result = await this.configManager.saveConfig(config);
+        return result;
+      } catch (error) {
+        console.error('Failed to update config:', error);
+        return { success: false, message: `Failed to update config: ${error}` };
+      }
+    });
+
     // Service installation handler
     ipcMain.handle('download-service', async (event, serviceName: string) => {
       const mainWindow = this.windowService.getMainWindow();
@@ -286,7 +457,23 @@ export class IpcService {
           return { success: false, message: 'Config file not found' };
         }
         
-        const service = configResult.config.services[serviceName];
+        const config = configResult.config;
+        let service;
+        let versionedService = false;
+        let version = '';
+        
+        // Handle versioned services
+        if (serviceName.startsWith('php-')) {
+          versionedService = true;
+          version = serviceName.replace('php-', '');
+          service = config.services.php.versions[version];
+        } else if (serviceName.startsWith('nodejs-')) {
+          versionedService = true;
+          version = serviceName.replace('nodejs-', '');
+          service = config.services.nodejs.versions[version];
+        } else {
+          service = config.services[serviceName];
+        }
         
         if (!service) {
           return { success: false, message: 'Service not found in config' };
@@ -331,7 +518,17 @@ export class IpcService {
         const isInstalled = this.serviceManager.checkServiceInstallation(service);
         
         // Update config
-        await this.configManager.updateServiceStatus(serviceName, { installed: isInstalled });
+        if (versionedService) {
+          if (serviceName.startsWith('php-')) {
+            config.services.php.versions[version].installed = isInstalled;
+            await this.configManager.saveConfig(config);
+          } else if (serviceName.startsWith('nodejs-')) {
+            config.services.nodejs.versions[version].installed = isInstalled;
+            await this.configManager.saveConfig(config);
+          }
+        } else {
+          await this.configManager.updateServiceStatus(serviceName, { installed: isInstalled });
+        }
         
         if (!isInstalled) {
           throw new Error('Installation verification failed');
