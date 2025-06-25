@@ -16,6 +16,7 @@ declare global {
     electronAPI: {
       checkPhpMyAdminMigration: () => Promise<{ needsMigration: boolean }>;
       migratePhpMyAdmin: () => Promise<{ success: boolean; message: string }>;
+      updateWebServerConfigs: () => Promise<{ success: boolean; message: string }>;
     };
   }
 }
@@ -56,10 +57,65 @@ function App() {
 
   // Load initial data
   useEffect(() => {
+    const initializeApp = async () => {
+      // First, ensure Sonna is initialized
+      try {
+        const api = window.electronAPI as any;
+        if (api && typeof api.initializeSonna === 'function') {
+          console.log('Initializing Sonna from frontend...');
+          const initResult = await api.initializeSonna();
+          if (initResult.success) {
+            console.log('Sonna initialized successfully from frontend');
+          } else {
+            console.error('Failed to initialize Sonna from frontend:', initResult.message);
+          }
+        } else {
+          console.warn('initializeSonna not available, main process may still be starting...');
+        }
+      } catch (error) {
+        console.error('Frontend initialization error:', error);
+      }
+
+      // Then load all other data
     loadServicesStatus();
     loadProjects();
     loadServiceConfigurations();
     checkPhpMyAdminMigration();
+      
+      // Auto-configure services on app load to handle all installation scenarios
+      const autoConfigureServices = async () => {
+        try {
+          const api = window.electronAPI as any;
+          if (api && typeof api.autoConfigureServices === 'function') {
+            console.log('🔄 Running auto-configuration for installed services...');
+            const configResult = await api.autoConfigureServices();
+            
+            if (configResult.success) {
+              console.log('✅ Auto-configuration completed:', configResult.message);
+              if (configResult.actions && configResult.actions.length > 0) {
+                console.log('📋 Actions performed:', configResult.actions);
+              }
+              
+              // Reload services status after configuration
+              setTimeout(() => {
+                loadServicesStatus();
+              }, 1000);
+            } else {
+              console.error('❌ Auto-configuration failed:', configResult.message);
+            }
+          } else {
+            console.warn('autoConfigureServices not available, skipping auto-configuration');
+          }
+        } catch (error) {
+          console.error('Failed to run auto-configuration:', error);
+        }
+      };
+      
+      // Delay the auto-configuration to avoid conflicts with other initialization
+      setTimeout(autoConfigureServices, 2000);
+    };
+
+    initializeApp();
   }, []);
 
   // Load services status
@@ -90,13 +146,20 @@ function App() {
   };
 
   // Check if phpMyAdmin migration is needed
-  const checkPhpMyAdminMigration = async () => {
+  const checkPhpMyAdminMigration = async (retryCount = 0) => {
     try {
-      if (window.electronAPI) {
+      // Add safety check with limited retries
+      if (window.electronAPI && typeof window.electronAPI.checkPhpMyAdminMigration === 'function') {
         const result = await window.electronAPI.checkPhpMyAdminMigration();
         if (result.needsMigration) {
           setMigrationDialogOpen(true);
         }
+      } else if (retryCount < 5) {
+        console.warn(`electronAPI.checkPhpMyAdminMigration not available, retry ${retryCount + 1}/5...`);
+        // Limited retries to prevent infinite loop
+        setTimeout(() => checkPhpMyAdminMigration(retryCount + 1), 1000);
+      } else {
+        console.warn('electronAPI.checkPhpMyAdminMigration not available after 5 retries, skipping migration check');
       }
     } catch (error) {
       console.error('Failed to check phpMyAdmin migration:', error);
@@ -120,6 +183,25 @@ function App() {
     } catch (error) {
       console.error('Failed to migrate phpMyAdmin:', error);
       throw error;
+    }
+  };
+
+  // Handle manual web server configuration update
+  const handleUpdateWebServerConfigs = async () => {
+    try {
+      if (window.electronAPI) {
+        const result = await window.electronAPI.updateWebServerConfigs();
+        if (result.success) {
+          console.log('Web server configurations updated successfully');
+          // Reload services to reflect updated configuration
+          await loadServicesStatus();
+          await loadServiceConfigurations();
+        } else {
+          console.error('Configuration update failed:', result.message);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update web server configurations:', error);
     }
   };
 

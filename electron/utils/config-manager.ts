@@ -372,7 +372,72 @@ export class ConfigManager {
     };
   }
 
+  /**
+   * Find templates directory with multiple fallback paths
+   */
+  private findTemplatesDirectory(): string {
+    const possiblePaths = [
+      // Development path
+      typeof __dirname !== 'undefined' ? path.join(__dirname, 'config-templates') : null,
+      // Production paths
+      path.join(process.cwd(), 'electron/utils/config-templates'),
+      path.join(process.resourcesPath || '', 'electron/utils/config-templates'),
+      path.join(process.resourcesPath || '', 'app/electron/utils/config-templates'),
+      // Build output path
+      path.join(process.cwd(), 'dist-electron/utils/config-templates'),
+      // Absolute fallback
+      'electron/utils/config-templates'
+    ].filter(Boolean) as string[];
+
+    for (const templatePath of possiblePaths) {
+      try {
+        const testFile = path.join(templatePath, 'default-index.html');
+        if (fs.existsSync(testFile)) {
+          console.log(`Found templates directory at: ${templatePath}`);
+          return templatePath;
+        }
+      } catch (error) {
+        // Continue to next path
+      }
+    }
+
+    // If none found, use first available path as fallback
+    const fallbackPath = possiblePaths[0] || 'electron/utils/config-templates';
+    console.warn(`Templates directory not found, using fallback: ${fallbackPath}`);
+    return fallbackPath;
+  }
+
+  /**
+   * Load template content from external file
+   */
+  private loadTemplate(fileName: string): string {
+    try {
+      const templatesDir = this.findTemplatesDirectory();
+      const filePath = path.join(templatesDir, fileName);
+      
+      if (fs.existsSync(filePath)) {
+        return fs.readFileSync(filePath, 'utf8');
+      } else {
+        console.warn(`Template file not found: ${filePath}, using fallback`);
+        return this.getFallbackIndexHtml();
+      }
+    } catch (error) {
+      console.error(`Failed to load template ${fileName}:`, error);
+      return this.getFallbackIndexHtml();
+    }
+  }
+
+  /**
+   * Get default index HTML from external template
+   */
   private getDefaultIndexHtml(): string {
+    return this.loadTemplate('default-index.html');
+  }
+
+  /**
+   * Fallback HTML content if template loading fails
+   */
+  private getFallbackIndexHtml(): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -416,56 +481,14 @@ export class ConfigManager {
             line-height: 1.6;
             margin-bottom: 1.5rem;
         }
-        .features {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-        .feature {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            color: #495057;
-        }
-        .footer {
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 1px solid #eee;
-            color: #999;
-            font-size: 0.9rem;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <span class="emoji">🚀</span>
         <h1>Hello Sonna!</h1>
-        <p>Welcome to your local development environment. Sonna is now running and ready to serve your web projects from <code>C:/sonna/www</code>.</p>
-        
-        <div class="features">
-            <div class="feature">
-                <strong>🌐 Web Server</strong><br>
-                Apache/Nginx ready
-            </div>
-            <div class="feature">
-                <strong>💾 Database</strong><br>
-                MySQL/MongoDB support
-            </div>
-            <div class="feature">
-                <strong>🐘 PHP</strong><br>
-                Multiple PHP versions
-            </div>
-            <div class="feature">
-                <strong>⚡ Node.js</strong><br>
-                Multiple Node.js versions
-            </div>
-        </div>
-        
-        <div class="footer">
-            Sonna - Modern Local Development Environment
-        </div>
+        <p>Welcome to your local development environment. Sonna is now running and ready to serve your web projects.</p>
+        <p><strong>Sonna v1.2.3</strong> - Modern Local Development Environment</p>
     </div>
 </body>
 </html>`;

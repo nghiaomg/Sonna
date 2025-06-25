@@ -60,9 +60,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Web server configuration
   updateWebServerConfigs: () => ipcRenderer.invoke('update-webserver-configs'),
+  regenerateApacheConfig: () => ipcRenderer.invoke('regenerate-apache-config'),
   
   // Config directory management
   initializeConfigDirectory: () => ipcRenderer.invoke('initialize-config-directory'),
+  
+  // PHP requirement for phpMyAdmin
+  checkPhpForPhpMyAdmin: () => ipcRenderer.invoke('check-php-for-phpmyadmin'),
+  setupPhpRequirementPage: () => ipcRenderer.invoke('setup-php-requirement-page'),
+  
+  // Auto-configuration
+  autoConfigureServices: () => ipcRenderer.invoke('auto-configure-services'),
+  triggerPostInstallationConfig: (serviceName: string) => ipcRenderer.invoke('trigger-post-installation-config', serviceName),
+  onConfigUpdated: (callback: any) => ipcRenderer.on('config-updated', callback),
+  removeConfigUpdatedListener: (callback: any) => ipcRenderer.removeListener('config-updated', callback),
   
   // Platform info
   platform: process.platform,
@@ -106,8 +117,13 @@ declare global {
       deleteService: (serviceName: string) => Promise<any>;
       checkPhpMyAdminMigration: () => Promise<{ needsMigration: boolean }>;
       migratePhpMyAdmin: () => Promise<{ success: boolean; message: string }>;
-      updateWebServerConfigs: () => Promise<void>;
-      initializeConfigDirectory: () => Promise<void>;
+      updateWebServerConfigs: () => Promise<{ success: boolean; message: string }>;
+      regenerateApacheConfig: () => Promise<{ success: boolean; message: string; phpDetected: boolean }>;
+      initializeConfigDirectory: () => Promise<{ success: boolean; message: string }>;
+      autoConfigureServices: () => Promise<{ success: boolean; message: string; actions: string[] }>;
+      triggerPostInstallationConfig: (serviceName: string) => Promise<{ success: boolean; message: string }>;
+      onConfigUpdated: (callback: any) => void;
+      removeConfigUpdatedListener: (callback: any) => void;
       platform: string;
     };
   }

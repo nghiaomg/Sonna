@@ -131,5 +131,12 @@
   "phpmyadmin_migration_migrating": "Migrating...",
   
   "language_selector_placeholder": "Search language...",
-  "language_selector_label": "Language"
+  "language_selector_label": "Language",
+  
+  "webserver_config_title": "Web Server Configuration",
+  "webserver_config_desc": "Update Apache and Nginx configurations to fix phpMyAdmin routing issues",
+  "webserver_config_button": "Update Web Server Configs",
+  "webserver_config_updating": "Updating Configurations...",
+  "webserver_config_success": "Configuration updated successfully",
+  "webserver_config_error": "Failed to update configuration"
 } 

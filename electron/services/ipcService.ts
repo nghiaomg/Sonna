@@ -343,6 +343,15 @@ export class IpcService {
       }
     });
 
+    // Auto-configuration handlers for PHP + Apache automation
+    ipcMain.handle('auto-configure-services', async () => {
+      return await this.autoConfigureServices();
+    });
+
+    ipcMain.handle('trigger-post-installation-config', async (event, serviceName: string) => {
+      return await this.triggerPostInstallationConfig(serviceName);
+    });
+
     // Cleanup handlers
     ipcMain.handle('cleanup-applications', async () => {
       const applicationsPath = 'C:/sonna/applications';
@@ -612,6 +621,118 @@ export class IpcService {
       }
     });
 
+    // PHP requirement check for phpMyAdmin
+    ipcMain.handle('check-php-for-phpmyadmin', async () => {
+      try {
+        const configResult = await this.configManager.getConfig();
+        if (!configResult.success || !configResult.config) {
+          return { phpAvailable: false, message: 'Config not found' };
+        }
+
+        // Check if any PHP version is installed
+        const phpVersions = configResult.config.services.php?.versions || {};
+        let phpInstalled = false;
+        let phpPath = '';
+        let phpVersion = '';
+
+        for (const [version, phpService] of Object.entries(phpVersions)) {
+          const service = phpService as any;
+          if (service.installed && service.extractPath) {
+            const phpExe = path.join(service.extractPath, 'php.exe');
+            if (fs.existsSync(phpExe)) {
+              phpInstalled = true;
+              phpPath = service.extractPath;
+              phpVersion = version;
+              break;
+            }
+          }
+        }
+
+        return { 
+          phpAvailable: phpInstalled, 
+          phpPath: phpPath,
+          phpVersion: phpVersion,
+          message: phpInstalled ? `PHP ${phpVersion} is available` : 'PHP not installed'
+        };
+      } catch (error) {
+        console.error('Failed to check PHP for phpMyAdmin:', error);
+        return { phpAvailable: false, message: `Check failed: ${error}` };
+      }
+    });
+
+    // Setup PHP requirement page
+    ipcMain.handle('setup-php-requirement-page', async () => {
+      try {
+        const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+        const templateManager = new ConfigTemplateManager();
+        await templateManager.createPHPRequirementPage();
+        return { success: true, message: 'PHP requirement page created successfully' };
+      } catch (error) {
+        console.error('Failed to setup PHP requirement page:', error);
+        return { success: false, message: `Setup failed: ${error}` };
+      }
+    });
+
+    // Regenerate Apache configuration with PHP detection
+    ipcMain.handle('regenerate-apache-config', async () => {
+      try {
+        console.log('🔄 Regenerating Apache configuration with PHP auto-detection...');
+        
+        const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+        const templateManager = new ConfigTemplateManager();
+        
+        const result = await templateManager.regenerateApacheConfigWithPHP();
+        
+        if (result.success) {
+          console.log(`✅ ${result.message}`);
+          
+          // Also create PHP requirement page if no PHP is detected
+          if (!result.phpDetected) {
+            await templateManager.createPHPRequirementPage();
+          }
+        }
+        
+        return result;
+      } catch (error) {
+        console.error('Failed to regenerate Apache config:', error);
+        return { 
+          success: false, 
+          phpDetected: false,
+          message: `Failed to regenerate Apache config: ${error instanceof Error ? error.message : String(error)}` 
+        };
+      }
+    });
+
+    // Auto-update configs when PHP is installed
+    ipcMain.handle('php-installed-update-configs', async () => {
+      try {
+        console.log('🐘 PHP installation detected - updating web server configurations...');
+        
+        const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+        const templateManager = new ConfigTemplateManager();
+        
+        // Regenerate Apache config with PHP support
+        const apacheResult = await templateManager.regenerateApacheConfigWithPHP();
+        
+        // Update other web server configs too
+        await this.serviceConfigurator.updateWebServerConfigs();
+        
+        return { 
+          success: true, 
+          phpDetected: apacheResult.phpDetected,
+          message: apacheResult.phpDetected 
+            ? 'Web server configurations updated with PHP support'
+            : 'Web server configurations updated (PHP still not detected)'
+        };
+      } catch (error) {
+        console.error('Failed to update configs after PHP installation:', error);
+        return { 
+          success: false, 
+          message: `Failed to update configs: ${error instanceof Error ? error.message : String(error)}` 
+        };
+      }
+    });
+
     // Get installation queue status
     ipcMain.handle('get-installation-queue-status', async () => {
       return {
@@ -781,10 +902,10 @@ export class IpcService {
         mainWindow?.webContents.send('download-progress', progress);
       });
 
-      // Download (with timeout)
+      // Download (with enhanced retry mechanism)
       await Promise.race([
         downloadManagerWithProgress.downloadFile(service.downloadUrl, downloadPath, serviceName),
-        this.createTimeoutPromise(300000, `Download timeout for ${serviceName}`) // 5 minutes
+        this.createTimeoutPromise(600000, `Download timeout for ${serviceName}`) // 10 minutes for large files
       ]);
 
       // Extract (with timeout) 
@@ -806,9 +927,16 @@ export class IpcService {
 
       await this.serviceConfigurator.setupService(serviceName, service);
 
-      // Handle special cases
-      if (serviceName === 'phpmyadmin') {
+      // Handle special cases - ALWAYS trigger config updates
+      if (serviceName === 'phpmyadmin' || serviceName === 'apache') {
+        console.log(`🔧 ${serviceName} installed - triggering web server configuration update...`);
         await this.serviceConfigurator.updateWebServerConfigs();
+        
+        // Also trigger Apache-specific configuration
+        if (fs.existsSync('C:/sonna/applications/apache')) {
+          console.log('🌐 Force Apache configuration update...');
+          await this.serviceConfigurator.updateApacheConfiguration();
+        }
       }
 
       // Verify installation
@@ -833,6 +961,35 @@ export class IpcService {
       });
 
       console.log(`=== ASYNC INSTALLATION COMPLETED: ${serviceName} ===\n`);
+      
+      // Auto-trigger post-installation configuration
+      try {
+        console.log('🔧 Triggering post-installation configuration...');
+        const postConfigResult = await this.triggerPostInstallationConfig(serviceName);
+        
+        if (postConfigResult.success) {
+          console.log(`✅ Post-installation config: ${postConfigResult.message}`);
+          
+          // Notify frontend about configuration update
+          mainWindow?.webContents.send('config-updated', {
+            type: 'post-installation',
+            serviceName: serviceName,
+            message: postConfigResult.message
+          });
+        } else {
+          console.log(`⚠️ Post-installation config issue: ${postConfigResult.message}`);
+        }
+
+        // Additional comprehensive auto-configuration trigger
+        console.log('🔄 Running comprehensive auto-configuration...');
+        const autoConfigResult = await this.autoConfigureServices();
+        if (autoConfigResult.success && autoConfigResult.actions.length > 0) {
+          console.log(`🎯 Additional actions performed: ${autoConfigResult.actions.join(', ')}`);
+        }
+        
+      } catch (error) {
+        console.error('Failed to run post-installation configuration:', error);
+      }
       
     } catch (error) {
       console.error(`=== ASYNC INSTALLATION FAILED: ${serviceName} ===`, error);
@@ -1117,6 +1274,216 @@ export class IpcService {
       } else {
         fs.copyFileSync(srcPath, destPath);
       }
+    }
+  }
+
+  /**
+   * Auto-configure services based on current installation status
+   * Handles the 3 scenarios: Apache first, PHP first, or simultaneous
+   */
+  private async autoConfigureServices(): Promise<{
+    success: boolean;
+    message: string;
+    actions: string[];
+  }> {
+    try {
+      console.log('🔄 Auto-configuring services based on installation status...');
+      
+      const actions: string[] = [];
+      
+      // Check Apache installation
+      const apacheInstalled = fs.existsSync('C:/sonna/applications/apache');
+      const apacheConfigExists = fs.existsSync('C:/sonna/applications/apache/Apache24/conf/httpd.conf');
+      
+      // Check PHP installation
+      const phpPaths = [
+        'C:/sonna/applications/php/8.4',
+        'C:/sonna/applications/php/8.3',
+        'C:/sonna/applications/php/8.2',
+        'C:/sonna/applications/php/8.1',
+      ];
+      const phpPath = phpPaths.find(p => fs.existsSync(p));
+      const phpInstalled = !!phpPath;
+      
+      // Check phpMyAdmin installation
+      const phpMyAdminInstalled = fs.existsSync('C:/sonna/applications/phpmyadmin');
+      
+      console.log(`📊 Installation Status:`);
+      console.log(`   Apache: ${apacheInstalled ? '✅' : '❌'}`);
+      console.log(`   PHP: ${phpInstalled ? '✅ at ' + phpPath : '❌'}`);
+      console.log(`   phpMyAdmin: ${phpMyAdminInstalled ? '✅' : '❌'}`);
+      
+      // Scenario 1: Apache installed, need to configure it
+      if (apacheInstalled) {
+        console.log('🌐 Apache detected - updating configuration...');
+        
+        try {
+          await this.serviceConfigurator.updateApacheConfiguration();
+          actions.push('Apache configuration updated');
+          
+          // If phpMyAdmin exists but PHP doesn't, ensure requirement page is created
+          if (phpMyAdminInstalled && !phpInstalled) {
+            actions.push('PHP requirement page created for phpMyAdmin');
+          }
+          
+          // If PHP exists, ensure it's configured with Apache
+          if (phpInstalled) {
+            actions.push(`PHP ${path.basename(phpPath!)} integrated with Apache`);
+          }
+          
+        } catch (error) {
+          console.error('Failed to update Apache configuration:', error);
+          actions.push(`Apache configuration failed: ${error}`);
+        }
+      }
+      
+      // Scenario 2 & 3: If PHP gets installed after Apache, or simultaneously
+      if (phpInstalled && apacheInstalled) {
+        console.log('🐘 PHP + Apache detected - ensuring integration...');
+        
+        try {
+          // Remove requirement page if it exists
+          const requirementPagePath = 'C:/sonna/applications/phpmyadmin/index.html';
+          if (fs.existsSync(requirementPagePath)) {
+            fs.unlinkSync(requirementPagePath);
+            actions.push('Removed PHP requirement page');
+          }
+          
+          // Regenerate Apache config with PHP support
+          await this.serviceConfigurator.updateApacheConfiguration();
+          actions.push('Apache reconfigured with PHP support');
+          
+        } catch (error) {
+          console.error('Failed to integrate PHP with Apache:', error);
+          actions.push(`PHP integration failed: ${error}`);
+        }
+      }
+      
+      return {
+        success: true,
+        message: `Auto-configuration completed. Actions: ${actions.join(', ')}`,
+        actions
+      };
+      
+    } catch (error) {
+      console.error('Auto-configuration failed:', error);
+      return {
+        success: false,
+        message: `Auto-configuration failed: ${error instanceof Error ? error.message : String(error)}`,
+        actions: []
+      };
+    }
+  }
+
+  /**
+   * Trigger post-installation configuration for a specific service
+   * Called after service installation completes
+   */
+  private async triggerPostInstallationConfig(serviceName: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    try {
+      console.log(`🔧 Post-installation configuration for: ${serviceName}`);
+      
+      // Handle Apache post-installation
+      if (serviceName === 'apache') {
+        console.log('🌐 Apache installed - configuring with current services...');
+        await this.serviceConfigurator.updateApacheConfiguration();
+        
+        // Check if phpMyAdmin is available and needs requirement page
+        const phpMyAdminExists = fs.existsSync('C:/sonna/applications/phpmyadmin');
+        const phpExists = ['8.4', '8.3', '8.2', '8.1'].some(v => 
+          fs.existsSync(`C:/sonna/applications/php/${v}`)
+        );
+        
+        if (phpMyAdminExists && !phpExists) {
+          console.log('⚠️ phpMyAdmin found without PHP - requirement page will be shown');
+        }
+        
+        return {
+          success: true,
+          message: 'Apache configured successfully'
+        };
+      }
+      
+      // Handle PHP post-installation
+      if (serviceName.startsWith('php-')) {
+        console.log('🐘 PHP installed - integrating with Apache...');
+        
+        // Check if Apache is installed
+        const apacheExists = fs.existsSync('C:/sonna/applications/apache');
+        
+        if (apacheExists) {
+          // Reconfigure Apache with PHP support
+          await this.serviceConfigurator.updateApacheConfiguration();
+          
+          // Remove requirement page if it exists
+          const requirementPagePath = 'C:/sonna/applications/phpmyadmin/index.html';
+          if (fs.existsSync(requirementPagePath)) {
+            fs.unlinkSync(requirementPagePath);
+            console.log('🗑️ Removed PHP requirement page');
+          }
+          
+          return {
+            success: true,
+            message: 'PHP integrated with Apache successfully'
+          };
+        } else {
+          return {
+            success: true,
+            message: 'PHP installed (Apache not available for integration)'
+          };
+        }
+      }
+      
+      // Handle phpMyAdmin post-installation
+      if (serviceName === 'phpmyadmin') {
+        console.log('🗄️ phpMyAdmin installed - configuring with Apache...');
+        
+        const apacheExists = fs.existsSync('C:/sonna/applications/apache');
+        
+        if (apacheExists) {
+          console.log('🌐 Apache detected - updating configuration for phpMyAdmin...');
+          
+          // Force Apache configuration update
+          await this.serviceConfigurator.updateApacheConfiguration();
+          
+          // Check if PHP is available to determine requirement page creation
+          const phpExists = ['8.4', '8.3', '8.2', '8.1'].some(v => 
+            fs.existsSync(`C:/sonna/applications/php/${v}`)
+          );
+          
+          if (!phpExists) {
+            console.log('⚠️ PHP not available - requirement page should be created');
+          } else {
+            console.log('✅ PHP available - phpMyAdmin should work normally');
+          }
+          
+          return {
+            success: true,
+            message: `phpMyAdmin configured with Apache ${phpExists ? '(PHP ready)' : '(PHP required)'}`
+          };
+        } else {
+          return {
+            success: true,
+            message: 'phpMyAdmin installed (Apache not available for configuration)'
+          };
+        }
+      }
+      
+      // For other services, no special post-installation config needed
+      return {
+        success: true,
+        message: `${serviceName} installed successfully`
+      };
+      
+    } catch (error) {
+      console.error(`Post-installation configuration failed for ${serviceName}:`, error);
+      return {
+        success: false,
+        message: `Configuration failed: ${error instanceof Error ? error.message : String(error)}`
+      };
     }
   }
 } 

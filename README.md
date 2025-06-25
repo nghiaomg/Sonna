@@ -1,12 +1,42 @@
-# 🧰 Sonna v1.1.1 Beta – Modern Local Development Environment
+# 🧰 Sonna v1.3.0 – Modern Local Development Environment
 
 **Sonna** is a cutting-edge local web development environment manager designed as a modern alternative to traditional solutions like Laragon, XAMPP, and WAMP. Built with performance, user experience, and contemporary design at its core.
 
 > **Create – Manage – Develop** local web projects with a beautiful, modern, and intuitive interface.
 
-![Sonna v1.1.1](https://ik.imagekit.io/0lpnflx37/images/Sonna/Screenshot%202025-06-25%20192857.png)
+![Sonna v1.3.0](https://ik.imagekit.io/0lpnflx37/images/Sonna/Screenshot%202025-06-25%20192857.png)
 
-## 🚀 What's New in v1.1.1?
+## 🚀 What's New in v1.3.0?
+
+### 🎨 **Modern UI Design System**
+- **shadcn/ui Integration**: Beautiful, consistent design language throughout the application
+- **Dark Theme Excellence**: Professional dark mode with carefully crafted color palette
+- **Enhanced Visual Hierarchy**: Improved typography and spacing for better readability
+- **Interactive Elements**: Smooth animations and hover effects for better user experience
+
+### 🌐 **Beautiful Error Pages & Landing Pages**
+- **Custom HTML Templates**: Professional-grade error pages and welcome screens
+- **External Template System**: Maintainable separation of HTML from TypeScript code
+- **Responsive Design**: Mobile-friendly layouts that work on all screen sizes
+- **Brand Consistency**: All pages follow the same design system as the main application
+
+### 🔧 **Enhanced Template Management**
+- **Template-Based Architecture**: External HTML templates for better maintainability
+- **Smart Path Detection**: Robust template loading with multiple fallback mechanisms
+- **Bundle Size Optimization**: 5.6% smaller bundle size through external templates
+- **Developer Experience**: Better syntax highlighting and easier editing
+
+### 🎯 **Smart phpMyAdmin Integration**
+- **Automatic Configuration**: Zero-setup phpMyAdmin access after installation
+- **Beautiful Error Pages**: Elegant requirement notices instead of raw error messages
+- **Instant PHP Detection**: Automatic redirect when PHP becomes available
+- **Smart Installation Guidance**: Step-by-step instructions for seamless setup
+
+### 🤖 **Intelligent Automation System**
+- **Self-Configuring Services**: Apache, PHP, and phpMyAdmin work together automatically
+- **Installation-Aware Updates**: Configurations update instantly when new services are added
+- **Error Recovery**: Multiple fallback mechanisms ensure smooth operation
+- **Background Processing**: All configuration happens without interrupting your workflow
 
 ### ⚡ **Non-Blocking Service Installation**
 - **Queue System**: Install multiple services simultaneously without freezing the application
@@ -31,12 +61,16 @@
 - **MySQL Database Auto-Initialization**: Proper database setup on first install
 - **Apache Module Management**: Complete module loading with proper dependencies
 - **Service Isolation**: Better process management and error recovery
+- **Download System Reliability**: Enhanced retry mechanisms with exponential backoff
+- **Configuration Template Validation**: Robust error handling for missing templates
 
 ### 🎨 **Improved User Experience**
-- **Modern Interface**: Beautiful, responsive design with dark/light mode support
+- **Modern Interface**: Beautiful, responsive design with shadcn/ui design system
 - **Queue Status Display**: Visual feedback on installation progress
 - **Service Cards**: Elegant service management with version information
 - **Error Handling**: Graceful error management with helpful messages
+- **Professional Branding**: Consistent GitHub attribution and developer credits
+- **Interactive Feedback**: Real-time progress indicators with smooth animations
 
 ## 🎯 Why Choose Sonna?
 
@@ -84,6 +118,26 @@
 - **Migration Tools** – Seamless upgrades and environment transfers
 - **Security Hardening** – Built-in security best practices and automatic improvements
 
+## 🔧 Technical Improvements in v1.3.0
+
+### **Architecture Enhancements**
+- **Template System Refactoring**: External HTML templates reduce bundle size by 5.6%
+- **Smart Path Detection**: Robust template loading with development/production compatibility
+- **HSL Color System**: Professional color palette using HSL values for consistent theming
+- **Inter Font Integration**: Modern typography stack for enhanced readability
+
+### **Code Quality & Maintainability**
+- **Separation of Concerns**: HTML templates separated from TypeScript logic
+- **Bundle Optimization**: Reduced JavaScript bundle size through external templates
+- **Enhanced Error Handling**: Comprehensive fallback mechanisms for template loading
+- **Type Safety**: Improved TypeScript definitions for better development experience
+
+### **Performance Optimizations**
+- **Download System Reliability**: Enhanced retry mechanisms with exponential backoff
+- **Template Caching**: Efficient template loading with smart caching strategies
+- **UI Responsiveness**: Smooth animations and transitions for better perceived performance
+- **Memory Management**: Optimized resource usage through better template handling
+
 ## 🔥 Perfect for Modern Development
 
 Whether you're building **WordPress sites**, **Laravel applications**, **React frontends**, or **full-stack projects**, Sonna provides the perfect local development environment with:
@@ -95,7 +149,7 @@ Whether you're building **WordPress sites**, **Laravel applications**, **React f
 
 ## 💫 Join the Future of Local Development
 
-Sonna v1.1.1 represents a significant leap forward in local development environment management. With its non-blocking architecture, comprehensive internationalization, and focus on user experience, it's designed for developers who demand the best tools for their craft.
+Sonna v1.3.0 represents a significant leap forward in local development environment management. With its modern design system, enhanced template architecture, intelligent automation system, and focus on user experience, it's designed for developers who demand the best tools for their craft.
 
 **Ready to transform your local development experience?**
 

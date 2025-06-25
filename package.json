@@ -2,7 +2,7 @@
   "name": "sonna",
   "productName": "Sonna",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.3.0.1",
   "description": "Modern Local Development Environment for Windows",
   "author": "nghiaomg",
   "main": "dist-electron/main.js",
@@ -12,13 +12,12 @@
     "build": "tsc -p electron && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "start": "electron-vite preview",
     "create-icons": "node scripts/create-windows-ico.js",
     "copy-assets": "node scripts/copy-assets.js",
     "fix-icons": "node scripts/apply-rcedit.js",
-    "build:win": "build-windows.bat",
-    "dist:win": "electron-builder --win --config electron-builder.json",
-    "build:electron": "tsc -p electron"
+    "fix-apache": "node scripts/regenerate-apache-config.js",
+    "fix-phpmyadmin": "node scripts/fix-phpmyadmin-config.js",
+    "dist:win": "electron-builder --win --config electron-builder.json"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.0.5",

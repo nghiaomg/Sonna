@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐘 PHP Required for phpMyAdmin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: hsl(0 0% 3.9%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: hsl(0 0% 98%);
+            padding: 1rem;
+        }
+        
+        .container {
+            background: hsl(0 0% 9%);
+            border: 1px solid hsl(0 0% 14.9%);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            text-align: center;
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        h1 {
+            color: hsl(0 0% 98%);
+            margin-bottom: 1rem;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            color: hsl(0 0% 63.9%);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+        
+        .steps {
+            text-align: left;
+            background: hsl(0 0% 14.9%);
+            border: 1px solid hsl(0 0% 20%);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        
+        .step:hover {
+            background: hsl(0 0% 20%);
+        }
+        
+        .step:last-child {
+            margin-bottom: 0;
+        }
+        
+        .step-number {
+            background: hsl(221.2 83.2% 53.3%);
+            color: hsl(0 0% 98%);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        
+        .step-text {
+            color: hsl(0 0% 95%);
+            font-size: 0.95rem;
+        }
+        
+        .refresh-info {
+            background: hsl(142.1 70.6% 45.3% / 0.1);
+            border: 1px solid hsl(142.1 70.6% 45.3% / 0.2);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            color: hsl(142.1 70.6% 45.3%);
+        }
+        
+        .progress {
+            margin-top: 1rem;
+            height: 8px;
+            background: hsl(0 0% 20%);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, hsl(221.2 83.2% 53.3%), hsl(262.1 83.3% 57.8%));
+            border-radius: 4px;
+            animation: loading 2s ease-in-out infinite;
+        }
+        
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 0%; }
+        }
+        
+        .refresh-btn {
+            background: hsl(221.2 83.2% 53.3%);
+            color: hsl(0 0% 98%);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .refresh-btn:hover {
+            background: hsl(221.2 83.2% 53.3% / 0.9);
+            transform: translateY(-1px);
+        }
+        
+        .check-count {
+            color: hsl(0 0% 63.9%);
+            font-size: 0.9rem;
+            margin-top: 0.75rem;
+        }
+
+        .feature-highlight {
+            background: hsl(47.9 95.8% 53.1% / 0.1);
+            border: 1px solid hsl(47.9 95.8% 53.1% / 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            color: hsl(47.9 95.8% 53.1%);
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: hsl(221.2 83.2% 53.3%);
+            color: hsl(0 0% 98%);
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin: 0 0.25rem;
+        }
+        
+        .github-link {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid hsl(0 0% 20%);
+        }
+        
+        .github-link a {
+            color: hsl(0 0% 63.9%);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        
+        .github-link a:hover {
+            color: hsl(0 0% 98%);
+        }
+        
+        .github-icon {
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🐘</div>
+        <h1>PHP Required for phpMyAdmin</h1>
+        <p class="subtitle">To access phpMyAdmin, you need to install PHP through Sonna first.</p>
+        
+        <div class="feature-highlight">
+            <strong>🎯 Recommended:</strong> Install 
+            <span class="version-badge">PHP 8.4</span> 
+            <span class="version-badge">PHP 8.3</span> 
+            for best performance and security
+        </div>
+        
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-text">Open <strong>Sonna</strong> application</div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-text">Go to <strong>Services</strong> section</div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-text">Click <strong>Install PHP</strong> and choose your preferred version</div>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-text">Wait for installation to complete (auto-configures Apache)</div>
+            </div>
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-text">This page will automatically redirect to phpMyAdmin</div>
+            </div>
+        </div>
+        
+        <div class="refresh-info">
+            <div>✨ <strong>Auto-checking every 30 seconds</strong></div>
+            <div>This page will automatically redirect when PHP becomes available</div>
+            <div class="check-count">Check #<span id="checkCount">1</span></div>
+            <div class="progress">
+                <div class="progress-bar"></div>
+            </div>
+            <button class="refresh-btn" onclick="checkPHP()">
+                ⟳ Check Now (F5)
+            </button>
+        </div>
+        
+        <div class="github-link">
+            <a href="https://github.com/nghiaomg" target="_blank">
+                <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                Made by nghiaomg
+            </a>
+        </div>
+    </div>
+
+    <script>
+        let checkCount = 1;
+        
+        function updateCheckCount() {
+            document.getElementById('checkCount').textContent = checkCount++;
+        }
+        
+        async function checkPHP() {
+            try {
+                updateCheckCount();
+                
+                // Try to access a PHP endpoint to check if PHP is working
+                const response = await fetch('/sonna-php-check.php');
+                
+                if (response.ok) {
+                    const text = await response.text();
+                    if (text.includes('PHP_WORKING')) {
+                        // PHP is working, redirect to phpMyAdmin
+                        window.location.href = '/phpmyadmin/';
+                        return;
+                    }
+                }
+                
+                console.log('PHP not yet available, will check again...');
+            } catch (error) {
+                console.log('PHP check failed:', error);
+            }
+        }
+        
+        // Auto-check every 30 seconds
+        setInterval(checkPHP, 30000);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+                e.preventDefault();
+                checkPHP();
+            }
+        });
+        
+        // Initial check after 5 seconds
+        setTimeout(checkPHP, 5000);
+    </script>
+</body>
+</html> 

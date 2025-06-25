@@ -7,9 +7,73 @@ export interface ConfigTemplateVariables {
 
 export class ConfigTemplateManager {
   private outputDir: string;
+  private templatesDir: string;
 
   constructor() {
     this.outputDir = 'C:/sonna/conf';
+    this.templatesDir = this.findTemplatesDirectory();
+  }
+
+  /**
+   * Find templates directory with fallback locations
+   */
+  private findTemplatesDirectory(): string {
+    const possiblePaths = [
+      // Development path
+      typeof __dirname !== 'undefined' ? path.join(__dirname, '../config-templates') : null,
+      // Production paths
+      path.join(process.cwd(), 'electron/utils/config-templates'),
+      path.join(process.resourcesPath || '', 'electron/utils/config-templates'),
+      path.join(process.resourcesPath || '', 'app/electron/utils/config-templates'),
+      // Build output path
+      path.join(process.cwd(), 'dist-electron/utils/config-templates'),
+      // Absolute fallback
+      'C:/WorkSpace/GitHub-Projects/sonna/electron/utils/config-templates'
+    ].filter(Boolean) as string[];
+
+    for (const templatePath of possiblePaths) {
+      try {
+        const testFile = path.join(templatePath, 'apache.conf');
+        if (fs.existsSync(testFile)) {
+          console.log(`Found templates directory at: ${templatePath}`);
+          return templatePath;
+        }
+      } catch (error) {
+        // Continue to next path
+      }
+    }
+
+    // If none found, use first available path as fallback
+    const fallbackPath = possiblePaths[0] || 'electron/utils/config-templates';
+    console.warn(`Templates directory not found in any expected location, using fallback: ${fallbackPath}`);
+    
+    // Ensure the directory exists
+    if (!fs.existsSync(fallbackPath)) {
+      console.warn(`Fallback path doesn't exist, creating: ${fallbackPath}`);
+      try {
+        fs.mkdirSync(fallbackPath, { recursive: true });
+      } catch (error) {
+        console.error('Failed to create fallback templates directory:', error);
+      }
+    }
+    
+    return fallbackPath;
+  }
+
+  /**
+   * Load template content from external file
+   */
+  private loadTemplate(fileName: string): string {
+    try {
+      const filePath = path.join(this.templatesDir, fileName);
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`Template file not found: ${filePath}`);
+      }
+      return fs.readFileSync(filePath, 'utf8');
+    } catch (error) {
+      console.error(`Failed to load template ${fileName}:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -42,7 +106,7 @@ export class ConfigTemplateManager {
    * Generate Apache configuration
    */
   async generateApacheConfig(variables: ConfigTemplateVariables): Promise<string> {
-    const template = this.getApacheTemplate();
+    const template = this.loadTemplate('apache.conf');
     const config = this.replaceVariables(template, {
       APACHE_ROOT: variables.APACHE_ROOT || 'C:/sonna/applications/apache/Apache24',
       APACHE_PORT: variables.APACHE_PORT || 80,
@@ -62,7 +126,7 @@ export class ConfigTemplateManager {
    * Generate Nginx configuration
    */
   async generateNginxConfig(variables: ConfigTemplateVariables): Promise<string> {
-    const template = this.getNginxTemplate();
+    const template = this.loadTemplate('nginx.conf');
     const config = this.replaceVariables(template, {
       NGINX_PORT: variables.NGINX_PORT || 8080,
       PHP_FASTCGI_CONFIG: variables.PHP_FASTCGI_CONFIG || '# PHP not configured',
@@ -81,7 +145,7 @@ export class ConfigTemplateManager {
    * Generate MySQL configuration
    */
   async generateMySQLConfig(variables: ConfigTemplateVariables): Promise<string> {
-    const template = this.getMySQLTemplate();
+    const template = this.loadTemplate('mysql.cnf');
     const config = this.replaceVariables(template, {
       MYSQL_PORT: variables.MYSQL_PORT || 3306,
       MYSQL_BASEDIR: variables.MYSQL_BASEDIR || 'C:/sonna/applications/mysql',
@@ -101,7 +165,7 @@ export class ConfigTemplateManager {
    * Generate Redis configuration
    */
   async generateRedisConfig(variables: ConfigTemplateVariables): Promise<string> {
-    const template = this.getRedisTemplate();
+    const template = this.loadTemplate('redis.conf');
     const config = this.replaceVariables(template, {
       REDIS_PORT: variables.REDIS_PORT || 6379,
       REDIS_DATADIR: variables.REDIS_DATADIR || 'C:/sonna/data/redis',
@@ -158,7 +222,34 @@ location ~ \\.php$ {
     apache: string;
     nginx: string;
   }> {
-    const apache = `
+    // Check if PHP is available and get configuration
+    const phpConfig = await this.detectPHPConfiguration();
+
+    let phpWarning = '';
+    let phpRequirement = '';
+
+    if (!phpConfig.available) {
+      phpWarning = `
+# ⚠️  WARNING: PHP NOT CONFIGURED
+# phpMyAdmin requires PHP to function properly.
+# Please install PHP through Sonna to enable phpMyAdmin.
+# Without PHP, visiting /phpmyadmin will show raw PHP code instead of the application.`;
+
+      phpRequirement = `
+    # PHP Requirement Notice
+    # Create a simple PHP check file
+    <Location "/phpmyadmin">
+        # If PHP is not loaded, Apache will serve raw PHP files
+        # Users will see PHP source code instead of the application
+        ErrorDocument 503 "PHP module not loaded. Please install PHP through Sonna to use phpMyAdmin."
+    </Location>`;
+    } else {
+      phpWarning = `
+# ✅ PHP CONFIGURED: ${phpConfig.version} at ${phpConfig.path}
+# phpMyAdmin will function properly with PHP module loaded.`;
+    }
+
+    const apache = `${phpWarning}
 # phpMyAdmin Configuration
 Alias /phpmyadmin "${phpMyAdminPath.replace(/\\/g, '/')}"
 
@@ -166,7 +257,30 @@ Alias /phpmyadmin "${phpMyAdminPath.replace(/\\/g, '/')}"
     Options Indexes FollowSymLinks
     AllowOverride All
     Require all granted
-    DirectoryIndex index.php
+    DirectoryIndex index.html index.php index.htm
+    
+    # Handle phpMyAdmin routing
+    RewriteEngine On
+    
+    # Allow files and directories to be accessed directly
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Fallback to index.php for phpMyAdmin routing
+    RewriteRule ^(.*)$ index.php [QSA,L]
+    
+    # Ensure index.php is accessible
+    <Files "index.php">
+        Require all granted
+    </Files>
+    
+    ${!phpConfig.available ? `
+    # PHP Not Available - Show Installation Guide
+    <Files "*.php">
+        ForceType text/plain
+        Header set Content-Type "text/html; charset=utf-8"
+        Header set X-PHP-Required "true"
+    </Files>` : ''}
 </Directory>
 
 # Security for phpMyAdmin
@@ -176,21 +290,31 @@ Alias /phpmyadmin "${phpMyAdminPath.replace(/\\/g, '/')}"
 
 <Directory "${phpMyAdminPath.replace(/\\/g, '/')}/setup/lib">
     Require all denied
-</Directory>`;
+</Directory>${phpRequirement}`;
 
-    const nginx = `
+    const nginx = `${phpWarning}
 # phpMyAdmin Configuration
 location /phpmyadmin {
     alias "${phpMyAdminPath.replace(/\\/g, '/')}";
     index index.php;
     
+    # Try files then fallback to index.php for phpMyAdmin routing
+    try_files $uri $uri/ /phpmyadmin/index.php?$query_string;
+    
+    ${phpConfig.available ? `
     location ~ ^/phpmyadmin/(.+\\.php)$ {
         alias "${phpMyAdminPath.replace(/\\/g, '/')}/$1";
         fastcgi_pass 127.0.0.1:9000;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $request_filename;
         include fastcgi_params;
-    }
+    }` : `
+    # PHP not configured - serve as plain text with installation notice
+    location ~ ^/phpmyadmin/(.+\\.php)$ {
+        alias "${phpMyAdminPath.replace(/\\/g, '/')}/$1";
+        add_header Content-Type "text/html; charset=utf-8";
+        add_header X-PHP-Required "true";
+    }`}
     
     location ~* ^/phpmyadmin/(.+\\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
         alias "${phpMyAdminPath.replace(/\\/g, '/')}/$1";
@@ -208,6 +332,67 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
     fs.writeFileSync(path.join(phpMyAdminConfigDir, 'nginx.conf'), nginx, 'utf8');
 
     return { apache, nginx };
+  }
+
+  /**
+   * Detect PHP configuration for phpMyAdmin
+   */
+  private async detectPHPConfiguration(): Promise<{
+    available: boolean;
+    path?: string;
+    version?: string;
+    dllName?: string;
+  }> {
+    try {
+      // Check common PHP installation paths
+      const phpPaths = [
+        'C:/sonna/applications/php/8.4',
+        'C:/sonna/applications/php/8.3',
+        'C:/sonna/applications/php/8.2',
+        'C:/sonna/applications/php/8.1',
+        'C:/sonna/applications/php/8.0',
+        'C:/sonna/applications/php/7.4',
+      ];
+
+      for (const phpPath of phpPaths) {
+        if (fs.existsSync(phpPath)) {
+          const phpExe = path.join(phpPath, 'php.exe');
+
+          // Check for common DLL names
+          const dllNames = ['php8apache2_4.dll', 'php7apache2_4.dll'];
+
+          for (const dllName of dllNames) {
+            const dllPath = path.join(phpPath, dllName);
+            if (fs.existsSync(phpExe) && fs.existsSync(dllPath)) {
+              const version = this.extractVersionFromPath(phpPath);
+              return {
+                available: true,
+                path: phpPath,
+                version: version,
+                dllName: dllName
+              };
+            }
+          }
+        }
+      }
+
+      return { available: false };
+    } catch (error) {
+      console.error('Error detecting PHP configuration:', error);
+      return { available: false };
+    }
+  }
+
+  /**
+   * Extract PHP version from installation path
+   */
+  private extractVersionFromPath(phpPath: string): string {
+    const pathParts = phpPath.split(/[/\\]/);
+    const versionPart = pathParts[pathParts.length - 1];
+
+    // Match version patterns like "8.3", "8.2.15", etc.
+    const versionMatch = versionPart.match(/^(\d+\.\d+(?:\.\d+)?)$/);
+    return versionMatch ? versionMatch[1] : 'Unknown';
   }
 
   /**
@@ -239,304 +424,141 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
   }
 
   /**
-   * Get Apache template (embedded)
-   */
-  private getApacheTemplate(): string {
-    return `# Apache Configuration Template for Sonna
-# This file will be used to generate Apache httpd.conf
-
-# Basic Server Configuration
-ServerRoot "{{APACHE_ROOT}}"
-ServerName localhost:{{APACHE_PORT}}
-Listen {{APACHE_PORT}}
-
-# Module Loading
-LoadModule authz_core_module modules/mod_authz_core.so
-LoadModule authz_host_module modules/mod_authz_host.so
-LoadModule authz_user_module modules/mod_authz_user.so
-LoadModule authn_core_module modules/mod_authn_core.so
-LoadModule authn_file_module modules/mod_authn_file.so
-LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
-LoadModule auth_basic_module modules/mod_auth_basic.so
-LoadModule access_compat_module modules/mod_access_compat.so
-LoadModule alias_module modules/mod_alias.so
-LoadModule deflate_module modules/mod_deflate.so
-LoadModule dir_module modules/mod_dir.so
-LoadModule env_module modules/mod_env.so
-LoadModule expires_module modules/mod_expires.so
-LoadModule headers_module modules/mod_headers.so
-LoadModule mime_module modules/mod_mime.so
-LoadModule negotiation_module modules/mod_negotiation.so
-LoadModule rewrite_module modules/mod_rewrite.so
-LoadModule setenvif_module modules/mod_setenvif.so
-LoadModule ssl_module modules/mod_ssl.so
-LoadModule log_config_module modules/mod_log_config.so
-
-# PHP Module (will be enabled when PHP is installed)
-{{PHP_MODULE_CONFIG}}
-
-# Document Root
-DocumentRoot "C:/sonna/www"
-
-# Directory Configuration
-<Directory "C:/sonna/www">
-    Options Indexes FollowSymLinks
-    AllowOverride All
-    Require all granted
-    DirectoryIndex index.html index.htm index.php
-</Directory>
-
-# Security Configuration
-<Files ".ht*">
-    Require all denied
-</Files>
-
-<Files "*.ini">
-    Require all denied
-</Files>
-
-# MIME Types
-TypesConfig conf/mime.types
-
-# phpMyAdmin Configuration
-{{PHPMYADMIN_CONFIG}}
-
-# Error and Access Logs
-ErrorLog logs/error.log
-LogLevel warn
-LogFormat "%h %l %u %t \\"%r\\" %>s %b \\"%{Referer}i\\" \\"%{User-Agent}i\\"" combined
-LogFormat "%h %l %u %t \\"%r\\" %>s %b" common
-CustomLog logs/access.log combined
-
-# Server Information
-ServerTokens Prod
-ServerSignature Off`;
-  }
-
-  /**
-   * Get Nginx template (embedded)
-   */
-  private getNginxTemplate(): string {
-    return `# Nginx Configuration Template for Sonna
-
-worker_processes auto;
-error_log logs/error.log;
-pid logs/nginx.pid;
-
-events {
-    worker_connections 1024;
-}
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-
-    # Logging
-    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
-                    '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent" "$http_x_forwarded_for"';
-
-    access_log logs/access.log main;
-
-    # Performance
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    keepalive_timeout 65;
-    types_hash_max_size 2048;
-
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types text/plain text/css text/xml text/javascript 
-               application/x-javascript application/xml+rss 
-               application/javascript application/json;
-
-    # Default server block
-    server {
-        listen {{NGINX_PORT}};
-        server_name localhost;
-        root C:/sonna/www;
-        index index.html index.htm index.php;
-
-        # Security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header X-Content-Type-Options "nosniff" always;
-
-        # Main location
-        location / {
-            try_files $uri $uri/ =404;
-        }
-
-        # PHP processing
-        {{PHP_FASTCGI_CONFIG}}
-
-        # phpMyAdmin configuration
-        {{PHPMYADMIN_CONFIG}}
-
-        # Security: deny access to sensitive files
-        location ~ /\\.ht {
-            deny all;
-        }
-
-        location ~ /\\.env {
-            deny all;
-        }
-
-        location ~ \\.ini$ {
-            deny all;
-        }
-
-        # Error pages
-        error_page 404 /404.html;
-        error_page 500 502 503 504 /50x.html;
-        location = /50x.html {
-            root html;
-        }
-    }
-}`;
-  }
-
-  /**
-   * Get MySQL template (embedded)
-   */
-  private getMySQLTemplate(): string {
-    return `# MySQL Configuration Template for Sonna
-# Based on MySQL 8.0+ defaults with optimizations for development
-
-[mysqld]
-# Basic Settings
-port = {{MYSQL_PORT}}
-basedir = {{MYSQL_BASEDIR}}
-datadir = {{MYSQL_DATADIR}}
-tmpdir = {{MYSQL_TMPDIR}}
-
-# Socket and PID (Windows compatible)
-pid-file = {{MYSQL_DATADIR}}/mysql.pid
-
-# Character Set
-character-set-server = utf8mb4
-collation-server = utf8mb4_unicode_ci
-
-# Connection Settings
-max_connections = 151
-max_connect_errors = 100000
-
-# Buffer Settings (optimized for development)
-innodb_buffer_pool_size = 128M
-innodb_log_file_size = 48M
-key_buffer_size = 16M
-max_allowed_packet = 64M
-table_open_cache = 64
-sort_buffer_size = 512K
-net_buffer_length = 16K
-read_buffer_size = 256K
-read_rnd_buffer_size = 512K
-myisam_sort_buffer_size = 8M
-
-# Logging
-log-error = {{MYSQL_DATADIR}}/error.log
-general_log = 0
-slow_query_log = 0
-
-# Security
-local_infile = 0
-
-# SQL Mode
-sql_mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
-
-# InnoDB Settings
-innodb_flush_log_at_trx_commit = 1
-innodb_lock_wait_timeout = 50
-innodb_file_per_table = 1
-
-# Binary Logging (disabled for development)
-skip-log-bin
-
-# Performance Schema (reduced for development)
-performance_schema = OFF
-
-# Windows specific settings
-named_pipe = ON
-shared_memory = ON
-
-[mysql]
-default-character-set = utf8mb4
-
-[client]
-port = {{MYSQL_PORT}}
-default-character-set = utf8mb4`;
-  }
-
-  /**
-   * Get Redis template (embedded)
-   */
-  private getRedisTemplate(): string {
-    return `# Redis Configuration Template for Sonna
-# Optimized for development environment
-
-# Network
-bind 127.0.0.1
-port {{REDIS_PORT}}
-timeout 0
-tcp-keepalive 300
-
-# General
-daemonize no
-supervised no
-pidfile {{REDIS_DATADIR}}/redis.pid
-loglevel notice
-logfile {{REDIS_DATADIR}}/redis.log
-
-# Database
-databases 16
-dir {{REDIS_DATADIR}}
-
-# Snapshotting (development settings)
-save 900 1
-save 300 10
-save 60 10000
-stop-writes-on-bgsave-error yes
-rdbcompression yes
-rdbchecksum yes
-dbfilename dump.rdb
-
-# Memory management
-maxmemory-policy allkeys-lru
-
-# Append only file (disabled for development)
-appendonly no
-
-# Security
-requirepass {{REDIS_PASSWORD}}
-
-# Slow log
-slowlog-log-slower-than 10000
-slowlog-max-len 128
-
-# Client output buffer limits
-client-output-buffer-limit normal 0 0 0
-client-output-buffer-limit replica 256mb 64mb 60
-client-output-buffer-limit pubsub 32mb 8mb 60
-
-# TCP listen backlog
-tcp-backlog 511
-
-# Client timeout
-timeout 0
-
-# No password warning disabled
-protected-mode no`;
-  }
-
-  /**
    * Get PHP DLL name based on version
    */
   private getPHPDllName(version: string): string {
     const majorVersion = version.split('.')[0];
     return `php${majorVersion}apache2_4.dll`;
+  }
+
+  /**
+   * Auto-regenerate Apache config when PHP status changes
+   */
+  async regenerateApacheConfigWithPHP(): Promise<{
+    success: boolean;
+    phpDetected: boolean;
+    configPath?: string;
+    message: string;
+  }> {
+    try {
+      console.log('🔄 Auto-regenerating Apache configuration with PHP detection...');
+      
+      // Detect current PHP installation
+      const phpConfig = await this.detectPHPConfiguration();
+      
+      // Get phpMyAdmin path (if available)
+      const phpMyAdminPath = 'C:/sonna/applications/phpmyadmin';
+      const hasPhpMyAdmin = fs.existsSync(path.join(phpMyAdminPath, 'index.php'));
+      
+      let phpModuleConfig = '# PHP not configured';
+      let phpMyAdminConfig = '# phpMyAdmin not configured';
+      
+      if (phpConfig.available) {
+        console.log(`✅ PHP detected: ${phpConfig.version} at ${phpConfig.path}`);
+        
+        // Generate PHP module configuration
+        const phpConfigResult = await this.generatePHPConfig(phpConfig.path!, phpConfig.version!);
+        phpModuleConfig = phpConfigResult.apacheModule;
+        
+        // Generate phpMyAdmin configuration with PHP support
+        if (hasPhpMyAdmin) {
+          const phpMyAdminConfigResult = await this.generatePhpMyAdminConfig(phpMyAdminPath);
+          phpMyAdminConfig = phpMyAdminConfigResult.apache;
+        }
+      } else {
+        console.log('⚠️ PHP not detected - generating config without PHP support');
+        
+        // Generate phpMyAdmin configuration without PHP (requirement page)
+        if (hasPhpMyAdmin) {
+          const phpMyAdminConfigResult = await this.generatePhpMyAdminConfig(phpMyAdminPath);
+          phpMyAdminConfig = phpMyAdminConfigResult.apache;
+        }
+      }
+      
+      // Generate Apache config with proper PHP and phpMyAdmin configuration
+      const configPath = await this.generateApacheConfig({
+        APACHE_ROOT: 'C:/sonna/applications/apache/Apache24',
+        APACHE_PORT: 80,
+        PHP_MODULE_CONFIG: phpModuleConfig,
+        PHPMYADMIN_CONFIG: phpMyAdminConfig
+      });
+      
+      const message = phpConfig.available 
+        ? `Apache configuration updated with PHP ${phpConfig.version} support`
+        : 'Apache configuration updated without PHP (requirement page active)';
+      
+      return {
+        success: true,
+        phpDetected: phpConfig.available,
+        configPath,
+        message
+      };
+      
+    } catch (error) {
+      console.error('Failed to regenerate Apache config:', error);
+      return {
+        success: false,
+        phpDetected: false,
+        message: `Failed to regenerate Apache config: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * Create PHP requirement page for phpMyAdmin
+   */
+  async createPHPRequirementPage(): Promise<void> {
+    const phpMyAdminPath = 'C:/sonna/applications/phpmyadmin';
+    
+    // Check if phpMyAdmin directory exists and has the key files
+    const hasPhpMyAdminDir = fs.existsSync(phpMyAdminPath);
+    const hasIndexPhp = hasPhpMyAdminDir && fs.existsSync(path.join(phpMyAdminPath, 'index.php'));
+    const hasConfigSample = hasPhpMyAdminDir && fs.existsSync(path.join(phpMyAdminPath, 'config.sample.inc.php'));
+    
+    console.log(`📊 phpMyAdmin detection:`);
+    console.log(`   Directory exists: ${hasPhpMyAdminDir ? '✅' : '❌'}`);
+    console.log(`   index.php exists: ${hasIndexPhp ? '✅' : '❌'}`);  
+    console.log(`   config.sample.inc.php exists: ${hasConfigSample ? '✅' : '❌'}`);
+    
+    if (!hasPhpMyAdminDir) {
+      console.log('⚠️ phpMyAdmin directory not found, skipping requirement page creation');
+      return;
+    }
+    
+    if (!hasIndexPhp && !hasConfigSample) {
+      console.log('⚠️ phpMyAdmin installation appears incomplete (missing key files)');
+      console.log('📁 Creating requirement page anyway for potential future installation...');
+    }
+
+    try {
+      // Load HTML template from external file
+      const requirementPageContent = this.loadTemplate('php-requirement-page.html');
+
+      // Write requirement page
+      const requirementPagePath = path.join(phpMyAdminPath, 'index.html');
+      fs.writeFileSync(requirementPagePath, requirementPageContent, 'utf8');
+      
+      // Create PHP check endpoint
+      const phpCheckContent = `<?php
+// PHP availability check endpoint for Sonna
+header('Content-Type: text/plain');
+echo 'PHP_WORKING_VERSION_' . PHP_VERSION;
+?>`;
+      
+      const wwwDir = 'C:/sonna/www';
+      if (!fs.existsSync(wwwDir)) {
+        fs.mkdirSync(wwwDir, { recursive: true });
+      }
+      
+      const phpCheckPath = path.join(wwwDir, 'sonna-php-check.php');
+      fs.writeFileSync(phpCheckPath, phpCheckContent, 'utf8');
+      
+      console.log('✅ PHP requirement page created at:', requirementPagePath);
+      console.log('✅ PHP check endpoint created at:', phpCheckPath);
+    } catch (error) {
+      console.error('Failed to create PHP requirement page:', error);
+      throw error;
+    }
   }
 
   /**
