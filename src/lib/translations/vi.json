@@ -36,7 +36,7 @@
   "openInBrowser": "Mở Trong Trình Duyệt",
   
   "serviceInstallation": "Cài Đặt Dịch Vụ",
-  "serviceInstallationDesc": "Cài đặt và cấu hình các dịch vụ phát triển",
+  "serviceInstallationDesc": "Cài đặt và cấu hình các dịch vụ phát triển cho môi trường local của bạn.",
   "initializingSonna": "Đang Khởi Tạo Sonna",
   "preparingDownload": "Đang Chuẩn Bị Tải Xuống",
   "downloading": "Đang Tải Xuống",
@@ -44,6 +44,13 @@
   "setup": "Cài Đặt",
   "completed": "Hoàn Thành",
   "error": "Lỗi",
+  
+  "versionsAvailable": "phiên bản có sẵn",
+  "version": "Phiên bản",
+  "installedVersions": "Phiên bản đã cài",
+  "available": "Có sẵn",
+  "allInstalled": "Đã cài tất cả",
+  "moreVersions": "phiên bản khác",
   
   "applicationCleanup": "Dọn Dẹp Ứng Dụng",
   "applicationCleanupDesc": "Giải phóng dung lượng ổ đĩa bằng cách xóa các dịch vụ không sử dụng",
@@ -107,5 +114,21 @@
   "failedToCleanup": "Không thể dọn dẹp",
   
   "hideToTray": "Ẩn Vào Khay Hệ Thống",
-  "quitApp": "Thoát Ứng Dụng"
+  "quitApp": "Thoát Ứng Dụng",
+  
+  "projects_refresh": "Làm mới",
+  "projects_refresh_tooltip": "Làm mới danh sách dự án",
+  
+  "phpmyadmin_migration_title": "Yêu cầu Di chuyển phpMyAdmin",
+  "phpmyadmin_migration_warning": "Cần cải thiện bảo mật",
+  "phpmyadmin_migration_description": "Hiện tại phpMyAdmin đang được cài đặt trong thư mục www nơi có thể bị người dùng sửa đổi hoặc xóa nhầm. Chúng tôi khuyến nghị di chuyển nó đến vị trí an toàn bên ngoài thư mục web.",
+  "phpmyadmin_migration_from": "Từ:",
+  "phpmyadmin_migration_to": "Đến:",
+  "phpmyadmin_migration_benefits": "Sau khi di chuyển, phpMyAdmin vẫn có thể truy cập tại localhost/phpmyadmin nhưng sẽ được bảo vệ khỏi các thay đổi ngoài ý muốn.",
+  "phpmyadmin_migration_skip": "Bỏ qua",
+  "phpmyadmin_migration_migrate": "Di chuyển ngay",
+  "phpmyadmin_migration_migrating": "Đang di chuyển...",
+  
+  "language_selector_placeholder": "Tìm kiếm ngôn ngữ...",
+  "language_selector_label": "Ngôn ngữ"
 }

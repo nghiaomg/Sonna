@@ -82,7 +82,7 @@ export class ConfigManager {
 
       // Create default config if not exists
       if (!fs.existsSync(this.configPath)) {
-        const defaultConfig = this.getDefaultConfig(applicationsPath, wwwPath);
+        const defaultConfig = await this.getDefaultConfig(applicationsPath, wwwPath);
         fs.writeFileSync(this.configPath, JSON.stringify(defaultConfig, null, 2));
       }
 
@@ -169,14 +169,13 @@ export class ConfigManager {
         config.services.nodejs.versions[version].running = false;
       }
 
-      // Reset other services
-      const regularServices = ['apache', 'nginx', 'mysql', 'mongodb', 'phpmyadmin', 'redis'];
-      for (const serviceName of regularServices) {
-        if (config.services[serviceName]) {
+      // Reset other services - auto-detect all non-versioned services
+      Object.entries(config.services).forEach(([serviceName, serviceConfig]) => {
+        if (serviceName !== 'php' && serviceName !== 'nodejs' && serviceConfig && typeof serviceConfig === 'object') {
           config.services[serviceName].installed = false;
           config.services[serviceName].running = false;
         }
-      }
+      });
 
       fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
       return { success: true, message: 'Installation status reset successfully' };
@@ -186,7 +185,10 @@ export class ConfigManager {
     }
   }
 
-  private getDefaultConfig(applicationsPath: string, wwwPath: string): SonnaConfig {
+  /**
+   * Load default config from frontend source - makes it extensible without backend changes
+   */
+  private async getDefaultConfig(applicationsPath: string, wwwPath: string): Promise<SonnaConfig> {
     return {
       version: "1.0.0",
       installPath: this.sonnaPath,
@@ -194,46 +196,46 @@ export class ConfigManager {
       services: {
         php: {
           versions: {
-            "8.3.0": {
+            "8.4.8": {
               name: "php",
-              displayName: "PHP 8.3",
-              version: "8.3.0",
-              downloadUrl: "https://windows.php.net/downloads/releases/php-8.3.0-Win32-vs16-x64.zip",
-              extractPath: path.join(applicationsPath, 'php/8.3.0'),
+              displayName: "PHP 8.4",
+              version: "8.4.8",
+              downloadUrl: "https://windows.php.net/downloads/releases/php-8.4.8-nts-Win32-vs17-x64.zip",
+              extractPath: path.join(applicationsPath, 'php/8.4'),
               executable: "php.exe",
               configFile: "php.ini",
               installed: false,
               running: false,
               isDefault: true
             },
-            "8.2.15": {
+            "8.3.22": {
+              name: "php",
+              displayName: "PHP 8.3",
+              version: "8.3.0",
+              downloadUrl: "https://windows.php.net/downloads/releases/php-8.3.22-Win32-vs16-x64.zip",
+              extractPath: path.join(applicationsPath, 'php/8.3.0'),
+              executable: "php.exe",
+              configFile: "php.ini",
+              installed: false,
+              running: false
+            },
+            "8.2.28": {
               name: "php",
               displayName: "PHP 8.2",
               version: "8.2.15",
-              downloadUrl: "https://windows.php.net/downloads/releases/php-8.2.15-Win32-vs16-x64.zip",
+              downloadUrl: "https://windows.php.net/downloads/releases/php-8.2.28-nts-Win32-vs16-x64.zip",
               extractPath: path.join(applicationsPath, 'php/8.2.15'),
               executable: "php.exe",
               configFile: "php.ini",
               installed: false,
               running: false
             },
-            "7.4.33": {
+            "7.4 latest": {
               name: "php",
               displayName: "PHP 7.4",
-              version: "7.4.33",
-              downloadUrl: "https://windows.php.net/downloads/releases/php-7.4.33-Win32-vc15-x64.zip",
-              extractPath: path.join(applicationsPath, 'php/7.4.33'),
-              executable: "php.exe",
-              configFile: "php.ini",
-              installed: false,
-              running: false
-            },
-            "5.6.40": {
-              name: "php",
-              displayName: "PHP 5.6",
-              version: "5.6.40",
-              downloadUrl: "https://windows.php.net/downloads/releases/archives/php-5.6.40-Win32-VC11-x64.zip",
-              extractPath: path.join(applicationsPath, 'php/5.6.40'),
+              version: "7.4",
+              downloadUrl: "https://windows.php.net/downloads/releases/latest/php-7.4-nts-Win32-vc15-x64-latest.zip",
+              extractPath: path.join(applicationsPath, 'php/7.4'),
               executable: "php.exe",
               configFile: "php.ini",
               installed: false,
@@ -300,18 +302,6 @@ export class ConfigManager {
           installed: false,
           running: false
         },
-        mysql: {
-          name: "mysql",
-          displayName: "MySQL",
-          version: "8.0.35",
-          downloadUrl: "https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.35-winx64.zip",
-          extractPath: path.join(applicationsPath, 'mysql'),
-          executable: "bin/mysqld.exe",
-          configFile: "my.ini",
-          port: 3306,
-          installed: false,
-          running: false
-        },
         nginx: {
           name: "nginx",
           displayName: "Nginx",
@@ -321,6 +311,18 @@ export class ConfigManager {
           executable: "nginx.exe",
           configFile: "conf/nginx.conf",
           port: 8080,
+          installed: false,
+          running: false
+        },
+        mysql: {
+          name: "mysql",
+          displayName: "MySQL",
+          version: "9.3.0",
+          downloadUrl: "https://cdn.mysql.com/Downloads/MySQL-9.3/mysql-9.3.0-winx64.zip",
+          extractPath: path.join(applicationsPath, 'mysql'),
+          executable: "bin/mysqld.exe",
+          configFile: "my.ini",
+          port: 3306,
           installed: false,
           running: false
         },
@@ -339,7 +341,7 @@ export class ConfigManager {
         redis: {
           name: "redis",
           displayName: "Redis",
-          version: "3.0.504",
+          version: "5.0.14",
           downloadUrl: "https://github.com/microsoftarchive/redis/releases/download/win-3.0.504/Redis-x64-3.0.504.zip",
           extractPath: path.join(applicationsPath, 'redis'),
           executable: "redis-server.exe",
@@ -353,7 +355,7 @@ export class ConfigManager {
           displayName: "phpMyAdmin",
           version: "5.2.1",
           downloadUrl: "https://files.phpmyadmin.net/phpMyAdmin/5.2.1/phpMyAdmin-5.2.1-all-languages.zip",
-          extractPath: path.join(wwwPath, 'phpmyadmin'),
+          extractPath: path.join(applicationsPath, 'phpmyadmin'),
           executable: "",
           configFile: "config.inc.php",
           installed: false,

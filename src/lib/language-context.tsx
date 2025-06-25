@@ -37,6 +37,14 @@ export interface TranslationKey {
   installing: string;
   deleting: string;
   
+  // Service card translations
+  versionsAvailable: string;
+  version: string;
+  installedVersions: string;
+  available: string;
+  allInstalled: string;
+  moreVersions: string;
+  
   // Service Management
   serviceControl: string;
   serviceControlDesc: string;
@@ -137,6 +145,25 @@ export interface TranslationKey {
   selectServiceDesc: string;
   searchServices: string;
   noServicesFound: string;
+  
+  // phpMyAdmin Migration
+  phpmyadmin_migration_title: string;
+  phpmyadmin_migration_warning: string;
+  phpmyadmin_migration_description: string;
+  phpmyadmin_migration_from: string;
+  phpmyadmin_migration_to: string;
+  phpmyadmin_migration_benefits: string;
+  phpmyadmin_migration_skip: string;
+  phpmyadmin_migration_migrating: string;
+  phpmyadmin_migration_migrate: string;
+  
+  // Projects 
+  projects_refresh: string;
+  projects_refresh_tooltip: string;
+  
+  // Language selector
+  language_selector_placeholder: string;
+  language_selector_label: string;
 }
 
 // Create language context
@@ -149,7 +176,7 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 // Default language
-const defaultLanguage: Language = 'en';
+const defaultLanguage: Language = 'vi';
 
 // Get stored language from localStorage
 const getStoredLanguage = (): Language => {
@@ -231,6 +258,12 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     installed: 'Installed',
     installing: 'Installing...',
     deleting: 'Deleting...',
+    versionsAvailable: 'versions available',
+    version: 'Version',
+    installedVersions: 'Installed Versions',
+    available: 'Available',
+    allInstalled: 'All Installed',
+    moreVersions: 'more',
     serviceControl: 'Service Control',
     serviceControlDesc: 'Manage your local development services',
     localProjects: 'Local Projects',
@@ -311,7 +344,20 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     selectService: 'Select Service',
     selectServiceDesc: 'Select a service to manage',
     searchServices: 'Search Services',
-    noServicesFound: 'No services found'
+    noServicesFound: 'No services found',
+    phpmyadmin_migration_title: 'phpMyAdmin Migration Required',
+    phpmyadmin_migration_warning: 'Security Improvement Required',
+    phpmyadmin_migration_description: 'Your phpMyAdmin installation is currently in the www folder where it could be accidentally modified or deleted. We recommend moving it to a secure location outside the web directory.',
+    phpmyadmin_migration_from: 'From:',
+    phpmyadmin_migration_to: 'To:',
+    phpmyadmin_migration_benefits: 'After migration, phpMyAdmin will still be accessible at localhost/phpmyadmin but will be protected from accidental modifications.',
+    phpmyadmin_migration_skip: 'Skip for Now',
+    phpmyadmin_migration_migrating: 'Migrating...',
+    phpmyadmin_migration_migrate: 'Migrate Now',
+    projects_refresh: 'Refresh',
+    projects_refresh_tooltip: 'Refresh projects',
+    language_selector_placeholder: 'Select language',
+    language_selector_label: 'Language'
   };
 
   return (

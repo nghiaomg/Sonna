@@ -7,12 +7,24 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { WindowService } from './windowService';
 
+// Installation queue interface
+interface InstallationTask {
+  serviceName: string;
+  service: any;
+  priority: number;
+}
+
 export class IpcService {
   private serviceManager: ServiceManager;
   private configManager: ConfigManager;
   private downloadManager: DownloadManager;
   private serviceConfigurator: ServiceConfigurator;
   private windowService: WindowService;
+  
+  // Installation queue management
+  private installationQueue: InstallationTask[] = [];
+  private activeInstallations = new Set<string>();
+  private maxConcurrentInstallations = 3; // Limit concurrent installations
 
   constructor(
     serviceManager: ServiceManager,
@@ -155,12 +167,10 @@ export class IpcService {
         
         const config = configResult.config;
         
-        // Check if version exists
         if (version && !config.services.nodejs.versions[version]) {
           return { success: false, message: `Node.js version ${version} not found` };
         }
         
-        // Initialize project settings if needed
         if (!config.projectSettings) {
           config.projectSettings = {};
         }
@@ -169,10 +179,8 @@ export class IpcService {
           config.projectSettings[projectPath] = {};
         }
         
-        // Update project Node.js version
         config.projectSettings[projectPath].nodeVersion = version || undefined;
         
-        // Save config
         await this.configManager.saveConfig(config);
         
         return { 
@@ -190,17 +198,13 @@ export class IpcService {
     // Project handlers
     ipcMain.handle('get-projects', async () => {
       try {
-        // Default path for projects
         const wwwPath = 'C:\\sonna\\www';
         
-        // Create directory if it doesn't exist
         if (!fs.existsSync(wwwPath)) {
           fs.mkdirSync(wwwPath, { recursive: true });
           console.log(`Created projects directory: ${wwwPath}`);
         }
         
-        // In a real implementation, this would scan the directory for projects
-        // For now, just return an empty array and the path
         return {
           success: true,
           projects: [],
@@ -222,7 +226,6 @@ export class IpcService {
       try {
         console.log(`Attempting to open folder: ${folderPath}`);
         
-        // Create the directory if it doesn't exist
         if (!fs.existsSync(folderPath)) {
           console.log(`Directory doesn't exist, creating: ${folderPath}`);
           try {
@@ -237,7 +240,6 @@ export class IpcService {
           }
         }
         
-        // Verify the directory exists before trying to open it
         if (!fs.existsSync(folderPath)) {
           console.error(`Directory still doesn't exist after creation attempt: ${folderPath}`);
           return { 
@@ -328,15 +330,12 @@ export class IpcService {
 
     ipcMain.handle('refresh-config', async () => {
       try {
-        // Force recreate config with latest default values
         const configPath = 'C:/sonna/config.json';
         
-        // Delete existing config
         if (fs.existsSync(configPath)) {
           fs.unlinkSync(configPath);
         }
         
-        // Reinitialize to create new config
         const result = await this.configManager.initialize();
         return result;
       } catch (error) {
@@ -447,11 +446,14 @@ export class IpcService {
       }
     });
 
-    // Service installation handler
+    // Service installation handler with queue management
     ipcMain.handle('download-service', async (event, serviceName: string) => {
       const mainWindow = this.windowService.getMainWindow();
       
       try {
+        console.log(`\n=== DOWNLOAD SERVICE REQUEST ===`);
+        console.log(`Requested service: ${serviceName}`);
+        
         const configResult = await this.configManager.getConfig();
         if (!configResult.success || !configResult.config) {
           return { success: false, message: 'Config file not found' };
@@ -461,99 +463,68 @@ export class IpcService {
         let service;
         let versionedService = false;
         let version = '';
+        let baseServiceName = '';
         
         // Handle versioned services
         if (serviceName.startsWith('php-')) {
           versionedService = true;
           version = serviceName.replace('php-', '');
+          baseServiceName = 'php';
+          
+          console.log(`PHP service detected:`);
+          console.log(`- Version key: ${version}`);
+          console.log(`- Available PHP versions in config:`, Object.keys(config.services.php.versions || {}));
+          
           service = config.services.php.versions[version];
         } else if (serviceName.startsWith('nodejs-')) {
           versionedService = true;
           version = serviceName.replace('nodejs-', '');
+          baseServiceName = 'nodejs';
+          
+          console.log(`Node.js service detected:`);
+          console.log(`- Version key: ${version}`);
+          console.log(`- Available Node.js versions in config:`, Object.keys(config.services.nodejs.versions || {}));
+          
           service = config.services.nodejs.versions[version];
         } else {
+          baseServiceName = serviceName;
           service = config.services[serviceName];
+          console.log(`Regular service detected: ${serviceName}`);
         }
+        
+        console.log(`Service found:`, !!service);
+        if (service) {
+          console.log(`Service details:`, {
+            name: service.name,
+            displayName: service.displayName,
+            version: service.version,
+            downloadUrl: service.downloadUrl ? 'present' : 'missing',
+            extractPath: service.extractPath
+          });
+        }
+        console.log(`=================================\n`);
         
         if (!service) {
-          return { success: false, message: 'Service not found in config' };
+          return { success: false, message: `Service ${serviceName} not found in config` };
         }
 
-        const downloadPath = path.join('C:/sonna/downloads', `${serviceName}.zip`);
-        const extractPath = service.extractPath;
-
-        // Create download directory
-        const downloadDir = path.dirname(downloadPath);
-        if (!fs.existsSync(downloadDir)) {
-          fs.mkdirSync(downloadDir, { recursive: true });
+        // Check if already in queue or being installed
+        if (this.activeInstallations.has(serviceName) || 
+            this.installationQueue.some(task => task.serviceName === serviceName)) {
+          return { success: false, message: `${service.displayName} is already being installed` };
         }
 
-        // Create extract directory
-        if (!fs.existsSync(extractPath)) {
-          fs.mkdirSync(extractPath, { recursive: true });
-        }
-
-        // Create a new download manager with progress callback for this download
-        const downloadManagerWithProgress = new DownloadManager((progress) => {
-          mainWindow?.webContents.send('download-progress', progress);
-        });
-
-        // Download file
-        await downloadManagerWithProgress.downloadFile(service.downloadUrl, downloadPath, serviceName);
-
-        // Extract file
-        await downloadManagerWithProgress.extractZip(downloadPath, extractPath, serviceName);
-
-        // Setup service
-        mainWindow?.webContents.send('download-progress', {
-          serviceName,
-          progress: 100,
-          status: 'setup',
-          message: `Setting up ${service.displayName}...`
-        });
-
-        await this.serviceConfigurator.setupService(serviceName, service);
-
-        // Verify installation before marking as installed
-        const isInstalled = this.serviceManager.checkServiceInstallation(service);
+        // Add to queue with priority (critical services first)
+        const priority = this.getServicePriority(serviceName);
+        this.addToQueue(serviceName, service, priority);
         
-        // Update config
-        if (versionedService) {
-          if (serviceName.startsWith('php-')) {
-            config.services.php.versions[version].installed = isInstalled;
-            await this.configManager.saveConfig(config);
-          } else if (serviceName.startsWith('nodejs-')) {
-            config.services.nodejs.versions[version].installed = isInstalled;
-            await this.configManager.saveConfig(config);
-          }
-        } else {
-          await this.configManager.updateServiceStatus(serviceName, { installed: isInstalled });
-        }
-        
-        if (!isInstalled) {
-          throw new Error('Installation verification failed');
-        }
+        // Process queue
+        this.processInstallationQueue();
 
-        // Clean up download
-        fs.unlinkSync(downloadPath);
-
-        mainWindow?.webContents.send('download-progress', {
-          serviceName,
-          progress: 100,
-          status: 'completed',
-          message: `${service.displayName} installed successfully`
-        });
-
-        return { success: true, message: `${service.displayName} installed successfully` };
+        return { success: true, message: `${service.displayName} added to installation queue` };
       } catch (error) {
-        mainWindow?.webContents.send('download-progress', {
-          serviceName,
-          progress: 0,
-          status: 'error',
-          message: `Failed to install: ${error}`
-        });
-        
-        return { success: false, message: `Failed to install: ${error}` };
+        console.error(`Failed to queue service ${serviceName}:`, error);
+        return { success: false, message: `Failed to queue service: ${error}` };
       }
     });
 
@@ -561,5 +532,591 @@ export class IpcService {
     ipcMain.handle('on-download-progress', (event, callback) => {
       // This is handled through the webContents.send above
     });
+    
+    // phpMyAdmin migration handler
+    ipcMain.handle('migrate-phpmyadmin', async () => {
+      try {
+        const oldPath = 'C:/sonna/www/phpmyadmin';
+        const newPath = 'C:/sonna/applications/phpmyadmin';
+        
+        // Check if old phpMyAdmin exists and new location doesn't
+        if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
+          console.log('Migrating phpMyAdmin from www to applications...');
+          
+          // Create new directory
+          const newDir = path.dirname(newPath);
+          if (!fs.existsSync(newDir)) {
+            fs.mkdirSync(newDir, { recursive: true });
+          }
+          
+          // Move directory
+          await this.moveDirectory(oldPath, newPath);
+          
+          // Update config
+          const configResult = await this.configManager.getConfig();
+          if (configResult.success && configResult.config) {
+            configResult.config.services.phpmyadmin.extractPath = newPath;
+            await this.configManager.saveConfig(configResult.config);
+          }
+          
+          // Update web server configs
+          await this.serviceConfigurator.updateWebServerConfigs();
+          
+          console.log('phpMyAdmin migration completed successfully');
+          return { success: true, message: 'phpMyAdmin migrated successfully' };
+        }
+        
+        return { success: true, message: 'No migration needed' };
+      } catch (error) {
+        console.error('Failed to migrate phpMyAdmin:', error);
+        return { success: false, message: `Migration failed: ${error}` };
+      }
+    });
+    
+    // Check if phpMyAdmin migration is needed
+    ipcMain.handle('check-phpmyadmin-migration', async () => {
+      try {
+        const oldPath = 'C:/sonna/www/phpmyadmin';
+        const newPath = 'C:/sonna/applications/phpmyadmin';
+        
+        const needsMigration = fs.existsSync(oldPath) && !fs.existsSync(newPath);
+        return { needsMigration };
+      } catch (error) {
+        console.error('Failed to check phpMyAdmin migration:', error);
+        return { needsMigration: false };
+      }
+    });
+
+    // Update web server configurations
+    ipcMain.handle('update-webserver-configs', async () => {
+      try {
+        console.log('Manually updating web server configurations...');
+        await this.serviceConfigurator.updateWebServerConfigs();
+        return { success: true, message: 'Web server configurations updated successfully' };
+      } catch (error) {
+        console.error('Failed to update web server configurations:', error);
+        return { success: false, message: `Failed to update configs: ${error}` };
+      }
+    });
+
+    // Initialize config directory
+    ipcMain.handle('initialize-config-directory', async () => {
+      try {
+        const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+        const templateManager = new ConfigTemplateManager();
+        await templateManager.initialize();
+        return { success: true, message: 'Config directory initialized at C:/sonna/conf' };
+      } catch (error) {
+        console.error('Failed to initialize config directory:', error);
+        return { success: false, message: `Failed to initialize: ${error}` };
+      }
+    });
+
+    // Get installation queue status
+    ipcMain.handle('get-installation-queue-status', async () => {
+      return {
+        queueLength: this.installationQueue.length,
+        activeInstallations: Array.from(this.activeInstallations),
+        maxConcurrent: this.maxConcurrentInstallations,
+        queuedServices: this.installationQueue.map(task => ({
+          serviceName: task.serviceName,
+          displayName: task.service.displayName,
+          priority: task.priority
+        }))
+      };
+    });
+
+    // Cancel installation handler
+    ipcMain.handle('cancel-installation', async (event, serviceName: string) => {
+      // Remove from queue if not yet started
+      const queueIndex = this.installationQueue.findIndex(task => task.serviceName === serviceName);
+      if (queueIndex !== -1) {
+        const task = this.installationQueue.splice(queueIndex, 1)[0];
+        console.log(`Cancelled ${serviceName} from installation queue`);
+        this.sendQueueStatus();
+        return { success: true, message: `${task.service.displayName} removed from queue` };
+      }
+      
+      // If already installing, we can't easily cancel (would need more complex cancellation logic)
+      if (this.activeInstallations.has(serviceName)) {
+        return { success: false, message: 'Cannot cancel installation in progress' };
+      }
+      
+      return { success: false, message: 'Service not found in queue' };
+    });
+  }
+  
+  /**
+   * Move directory from source to destination
+   */
+  private async moveDirectory(source: string, destination: string): Promise<void> {
+    const moveDir = (src: string, dest: string) => {
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+      }
+      
+      const items = fs.readdirSync(src);
+      for (const item of items) {
+        const srcPath = path.join(src, item);
+        const destPath = path.join(dest, item);
+        
+        if (fs.statSync(srcPath).isDirectory()) {
+          moveDir(srcPath, destPath);
+        } else {
+          fs.copyFileSync(srcPath, destPath);
+        }
+      }
+    };
+    
+    moveDir(source, destination);
+    
+    // Remove source directory after successful copy
+    fs.rmSync(source, { recursive: true, force: true });
+  }
+
+  /**
+   * Add service to installation queue
+   */
+  private addToQueue(serviceName: string, service: any, priority: number) {
+    const task: InstallationTask = {
+      serviceName,
+      service,
+      priority
+    };
+    
+    this.installationQueue.push(task);
+    // Sort by priority (higher priority first)
+    this.installationQueue.sort((a, b) => b.priority - a.priority);
+    
+    console.log(`Added ${serviceName} to queue with priority ${priority}`);
+    console.log(`Queue length: ${this.installationQueue.length}`);
+  }
+
+  /**
+   * Get service priority for queue ordering
+   */
+  private getServicePriority(serviceName: string): number {
+    // Critical services get higher priority
+    const priorities: { [key: string]: number } = {
+      'apache': 100,
+      'nginx': 100,
+      'mysql': 90,
+      'redis': 80,
+      'phpmyadmin': 70,
+      // PHP versions
+      'php-8.3': 95,
+      'php-8.2': 94,
+      'php-8.1': 93,
+      'php-8.0': 92,
+      'php-7.4': 91,
+      // Node.js versions
+      'nodejs-20': 85,
+      'nodejs-18': 84,
+      'nodejs-16': 83
+    };
+    
+    return priorities[serviceName] || 50; // Default priority
+  }
+
+  /**
+   * Process installation queue
+   */
+  private async processInstallationQueue() {
+    // Check if we can start more installations
+    while (this.installationQueue.length > 0 && 
+           this.activeInstallations.size < this.maxConcurrentInstallations) {
+      
+      const task = this.installationQueue.shift();
+      if (!task) break;
+      
+      // Mark as active
+      this.activeInstallations.add(task.serviceName);
+      
+      // Send queue status to frontend
+      this.sendQueueStatus();
+      
+      // Start installation in background (non-blocking)
+      this.installServiceAsync(task)
+        .then(() => {
+          console.log(`Installation completed for ${task.serviceName}`);
+        })
+        .catch(error => {
+          console.error(`Installation failed for ${task.serviceName}:`, error);
+        })
+        .finally(() => {
+          // Remove from active installations
+          this.activeInstallations.delete(task.serviceName);
+          // Continue processing queue
+          this.processInstallationQueue();
+        });
+    }
+  }
+
+  /**
+   * Install service asynchronously (non-blocking)
+   */
+  private async installServiceAsync(task: InstallationTask): Promise<void> {
+    const { serviceName, service } = task;
+    const mainWindow = this.windowService.getMainWindow();
+    
+    try {
+      console.log(`\n=== STARTING ASYNC INSTALLATION: ${serviceName} ===`);
+      
+      // Send start notification
+      mainWindow?.webContents.send('download-progress', {
+        serviceName,
+        progress: 0,
+        status: 'starting',
+        message: `Starting ${service.displayName} installation...`
+      });
+
+      const downloadPath = path.join('C:/sonna/downloads', `${serviceName}.zip`);
+      const extractPath = service.extractPath;
+
+      // Create directories
+      await this.createDirectories(downloadPath, extractPath);
+
+      // Create download manager with progress callback
+      const downloadManagerWithProgress = new DownloadManager((progress) => {
+        mainWindow?.webContents.send('download-progress', progress);
+      });
+
+      // Download (with timeout)
+      await Promise.race([
+        downloadManagerWithProgress.downloadFile(service.downloadUrl, downloadPath, serviceName),
+        this.createTimeoutPromise(300000, `Download timeout for ${serviceName}`) // 5 minutes
+      ]);
+
+      // Extract (with timeout) 
+      await Promise.race([
+        downloadManagerWithProgress.extractZip(downloadPath, extractPath, serviceName),
+        this.createTimeoutPromise(180000, `Extraction timeout for ${serviceName}`) // 3 minutes
+      ]);
+
+      // Post-extraction processing (async with smaller chunks)
+      await this.processPostExtraction(serviceName, extractPath);
+
+      // Setup service (async)
+      mainWindow?.webContents.send('download-progress', {
+        serviceName,
+        progress: 90,
+        status: 'setup',
+        message: `Setting up ${service.displayName}...`
+      });
+
+      await this.serviceConfigurator.setupService(serviceName, service);
+
+      // Handle special cases
+      if (serviceName === 'phpmyadmin') {
+        await this.serviceConfigurator.updateWebServerConfigs();
+      }
+
+      // Verify installation
+      const isInstalled = await this.verifyInstallation(serviceName, service);
+      
+      // Update config
+      await this.updateServiceConfig(serviceName, service, isInstalled);
+      
+      if (!isInstalled) {
+        throw new Error('Installation verification failed');
+      }
+
+      // Cleanup
+      await this.cleanupDownload(downloadPath);
+
+      // Send completion notification
+      mainWindow?.webContents.send('download-progress', {
+        serviceName,
+        progress: 100,
+        status: 'completed',
+        message: `${service.displayName} installed successfully`
+      });
+
+      console.log(`=== ASYNC INSTALLATION COMPLETED: ${serviceName} ===\n`);
+      
+    } catch (error) {
+      console.error(`=== ASYNC INSTALLATION FAILED: ${serviceName} ===`, error);
+      
+      mainWindow?.webContents.send('download-progress', {
+        serviceName,
+        progress: 0,
+        status: 'error',
+        message: `Failed to install ${service.displayName}: ${error}`
+      });
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Create timeout promise for async operations
+   */
+  private createTimeoutPromise(ms: number, message: string): Promise<never> {
+    return new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    });
+  }
+
+  /**
+   * Create necessary directories
+   */
+  private async createDirectories(downloadPath: string, extractPath: string): Promise<void> {
+    const downloadDir = path.dirname(downloadPath);
+    if (!fs.existsSync(downloadDir)) {
+      fs.mkdirSync(downloadDir, { recursive: true });
+    }
+    if (!fs.existsSync(extractPath)) {
+      fs.mkdirSync(extractPath, { recursive: true });
+    }
+  }
+
+  /**
+   * Process post-extraction in smaller chunks (async)
+   */
+  private async processPostExtraction(serviceName: string, extractPath: string): Promise<void> {
+    // Use setTimeout to yield control back to event loop
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        try {
+          if (serviceName.startsWith('nodejs-')) {
+            await this.processNodeJSExtraction(extractPath);
+          } else if (serviceName === 'nginx') {
+            await this.processNginxExtraction(extractPath);
+          } else if (serviceName === 'phpmyadmin') {
+            await this.processPhpMyAdminExtraction(extractPath);
+          } else if (serviceName === 'mysql') {
+            await this.processMySQLExtraction(extractPath);
+          }
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }, 10); // Small delay to prevent blocking
+    });
+  }
+
+  /**
+   * Verify installation asynchronously
+   */
+  private async verifyInstallation(serviceName: string, service: any): Promise<boolean> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        try {
+          let serviceForVerification = service;
+          if (serviceName.startsWith('php-') || serviceName.startsWith('nodejs-')) {
+            const baseServiceName = serviceName.startsWith('php-') ? 'php' : 'nodejs';
+            serviceForVerification = { ...service, name: baseServiceName };
+          }
+          
+          const isInstalled = this.serviceManager.checkServiceInstallation(serviceForVerification);
+          console.log(`Verification result for ${serviceName}: ${isInstalled}`);
+          resolve(isInstalled);
+        } catch (error) {
+          console.error(`Verification failed for ${serviceName}:`, error);
+          resolve(false);
+        }
+      }, 50); // Small delay for async processing
+    });
+  }
+
+  /**
+   * Update service configuration
+   */
+  private async updateServiceConfig(serviceName: string, service: any, isInstalled: boolean): Promise<void> {
+    try {
+      if (serviceName.startsWith('php-')) {
+        const version = serviceName.replace('php-', '');
+        const configResult = await this.configManager.getConfig();
+        if (configResult.success && configResult.config) {
+          configResult.config.services.php.versions[version].installed = isInstalled;
+          await this.configManager.saveConfig(configResult.config);
+        }
+      } else if (serviceName.startsWith('nodejs-')) {
+        const version = serviceName.replace('nodejs-', '');
+        const configResult = await this.configManager.getConfig();
+        if (configResult.success && configResult.config) {
+          configResult.config.services.nodejs.versions[version].installed = isInstalled;
+          await this.configManager.saveConfig(configResult.config);
+        }
+      } else {
+        await this.configManager.updateServiceStatus(serviceName, { installed: isInstalled });
+      }
+    } catch (error) {
+      console.error(`Failed to update config for ${serviceName}:`, error);
+    }
+  }
+
+  /**
+   * Cleanup download file
+   */
+  private async cleanupDownload(downloadPath: string): Promise<void> {
+    try {
+      if (fs.existsSync(downloadPath)) {
+        fs.unlinkSync(downloadPath);
+      }
+    } catch (error) {
+      console.error(`Failed to cleanup download file ${downloadPath}:`, error);
+    }
+  }
+
+  /**
+   * Send queue status to frontend
+   */
+  private sendQueueStatus(): void {
+    const mainWindow = this.windowService.getMainWindow();
+    mainWindow?.webContents.send('installation-queue-status', {
+      queueLength: this.installationQueue.length,
+      activeInstallations: Array.from(this.activeInstallations),
+      maxConcurrent: this.maxConcurrentInstallations
+    });
+  }
+
+  /**
+   * Process Node.js extraction
+   */
+  private async processNodeJSExtraction(extractPath: string): Promise<void> {
+    console.log(`\n=== POST-EXTRACTION PROCESSING FOR NODE.JS ===`);
+    const extractedFiles = fs.readdirSync(extractPath);
+    
+    if (extractedFiles.length === 1 && fs.statSync(path.join(extractPath, extractedFiles[0])).isDirectory()) {
+      const nestedFolderPath = path.join(extractPath, extractedFiles[0]);
+      const nestedFiles = fs.readdirSync(nestedFolderPath);
+      
+      if (nestedFiles.includes('node.exe')) {
+        console.log(`Moving Node.js files from nested folder...`);
+        await this.moveFilesFromNestedFolder(nestedFolderPath, extractPath, extractedFiles[0]);
+      }
+    }
+    console.log(`=== NODE.JS POST-EXTRACTION COMPLETED ===\n`);
+  }
+
+  /**
+   * Process Nginx extraction
+   */
+  private async processNginxExtraction(extractPath: string): Promise<void> {
+    console.log(`\n=== POST-EXTRACTION PROCESSING FOR NGINX ===`);
+    const extractedFiles = fs.readdirSync(extractPath);
+    
+    if (extractedFiles.length === 1 && fs.statSync(path.join(extractPath, extractedFiles[0])).isDirectory()) {
+      const nestedFolderPath = path.join(extractPath, extractedFiles[0]);
+      const nestedFiles = fs.readdirSync(nestedFolderPath);
+      
+      if (nestedFiles.includes('nginx.exe') && nestedFiles.includes('conf')) {
+        console.log(`Moving Nginx files from nested folder...`);
+        await this.moveFilesFromNestedFolder(nestedFolderPath, extractPath, extractedFiles[0]);
+      }
+    }
+    console.log(`=== NGINX POST-EXTRACTION COMPLETED ===\n`);
+  }
+
+  /**
+   * Process phpMyAdmin extraction
+   */
+  private async processPhpMyAdminExtraction(extractPath: string): Promise<void> {
+    console.log(`\n=== POST-EXTRACTION PROCESSING FOR PHPMYADMIN ===`);
+    const extractedFiles = fs.readdirSync(extractPath);
+    
+    const phpMyAdminFolder = extractedFiles.find(file => 
+      file.startsWith('phpMyAdmin') && 
+      fs.statSync(path.join(extractPath, file)).isDirectory()
+    );
+    
+    if (phpMyAdminFolder) {
+      const nestedFolderPath = path.join(extractPath, phpMyAdminFolder);
+      const nestedFiles = fs.readdirSync(nestedFolderPath);
+      
+      if (nestedFiles.includes('index.php')) {
+        console.log(`Moving phpMyAdmin files from nested folder...`);
+        await this.moveFilesFromNestedFolder(nestedFolderPath, extractPath, phpMyAdminFolder);
+      }
+    }
+    console.log(`=== PHPMYADMIN POST-EXTRACTION COMPLETED ===\n`);
+  }
+
+  /**
+   * Process MySQL extraction
+   */
+  private async processMySQLExtraction(extractPath: string): Promise<void> {
+    console.log(`\n=== POST-EXTRACTION PROCESSING FOR MYSQL ===`);
+    const extractedFiles = fs.readdirSync(extractPath);
+    
+    const mysqlFolder = extractedFiles.find(file => 
+      file.startsWith('mysql') && 
+      fs.statSync(path.join(extractPath, file)).isDirectory()
+    );
+    
+    if (mysqlFolder) {
+      const nestedFolderPath = path.join(extractPath, mysqlFolder);
+      const nestedFiles = fs.readdirSync(nestedFolderPath);
+      
+      if (nestedFiles.includes('bin')) {
+        console.log(`Moving MySQL files from nested folder...`);
+        await this.moveFilesFromNestedFolder(nestedFolderPath, extractPath, mysqlFolder);
+      }
+    }
+    console.log(`=== MYSQL POST-EXTRACTION COMPLETED ===\n`);
+  }
+
+  /**
+   * Move files from nested folder (with async processing)
+   */
+  private async moveFilesFromNestedFolder(nestedFolderPath: string, extractPath: string, folderName: string): Promise<void> {
+    const nestedFiles = fs.readdirSync(nestedFolderPath);
+    
+    // Process files in chunks to prevent blocking
+    const chunkSize = 5;
+    for (let i = 0; i < nestedFiles.length; i += chunkSize) {
+      const chunk = nestedFiles.slice(i, i + chunkSize);
+      
+      await new Promise<void>((resolve) => {
+        setTimeout(() => {
+          for (const file of chunk) {
+            const sourcePath = path.join(nestedFolderPath, file);
+            const destPath = path.join(extractPath, file);
+            
+            try {
+              if (fs.statSync(sourcePath).isDirectory()) {
+                this.moveDirectoryRecursive(sourcePath, destPath);
+              } else {
+                fs.copyFileSync(sourcePath, destPath);
+              }
+              console.log(`✓ Moved: ${file}`);
+            } catch (moveError) {
+              console.error(`Failed to move ${file}:`, moveError);
+            }
+          }
+          resolve();
+        }, 10); // Small delay between chunks
+      });
+    }
+    
+    // Remove nested folder
+    try {
+      fs.rmSync(nestedFolderPath, { recursive: true, force: true });
+      console.log(`✓ Removed nested folder: ${folderName}`);
+    } catch (rmError) {
+      console.error(`Failed to remove nested folder:`, rmError);
+    }
+  }
+
+  /**
+   * Move directory recursively
+   */
+  private moveDirectoryRecursive(src: string, dest: string): void {
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+    
+    const items = fs.readdirSync(src);
+    for (const item of items) {
+      const srcPath = path.join(src, item);
+      const destPath = path.join(dest, item);
+      
+      if (fs.statSync(srcPath).isDirectory()) {
+        this.moveDirectoryRecursive(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
   }
 } 

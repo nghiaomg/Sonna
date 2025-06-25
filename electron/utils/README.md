@@ -1,145 +1,133 @@
-# Utils - Electron Backend Utilities
+# Service Configurator Architecture
 
-This folder contains modular utilities for the Sonna Electron application, designed for scalability and maintainability.
+This directory contains the modular service configuration system following SOLID principles.
 
-## Structure
+## 📁 Directory Structure
 
 ```
-utils/
-├── index.ts              # Main exports for easy importing
-├── service-manager.ts    # Service lifecycle management
-├── download-manager.ts   # File download and extraction
-├── service-configurator.ts # Service setup and configuration
-├── config-manager.ts     # Configuration file management
-└── README.md            # This documentation
+electron/utils/
+├── interfaces/          # Core interfaces (ISP)
+│   └── index.ts         # IServiceSetup, IConfigProvider, IWebServerConfigurator
+├── base/               # Abstract base classes (OCP)
+│   ├── BaseServiceSetup.ts
+│   ├── BaseWebServerConfigurator.ts
+│   └── index.ts
+├── services/           # Service implementations (SRP)
+│   ├── PHPServiceSetup.ts
+│   ├── MySQLServiceSetup.ts
+│   ├── RedisServiceSetup.ts
+│   ├── NodeJSServiceSetup.ts
+│   ├── PhpMyAdminServiceSetup.ts
+│   └── index.ts
+├── webservers/         # Web server configurators (SRP)
+│   ├── ApacheConfigurator.ts
+│   ├── NginxConfigurator.ts
+│   └── index.ts
+├── factories/          # Factory pattern (DIP)
+│   ├── ServiceSetupFactory.ts
+│   ├── WebServerConfiguratorFactory.ts
+│   └── index.ts
+├── providers/          # Dependency providers (DIP)
+│   ├── ConfigManagerProvider.ts
+│   └── index.ts
+└── service-configurator.ts  # Main orchestrator
 ```
 
-## Modules
+## 🎯 SOLID Principles Implementation
 
-### ServiceManager (`service-manager.ts`)
-Handles the lifecycle of development services (Apache, MySQL, PHP, etc.)
+### 1. **Single Responsibility Principle (SRP)**
+- Each service setup class handles only one service
+- Each web server configurator handles only one web server
+- Clear separation of concerns
 
-**Key Features:**
-- Start/stop services with proper process management
-- Real-time service status checking
-- Installation verification
-- Process monitoring and cleanup
+### 2. **Open/Closed Principle (OCP)**
+- Base classes provide extension points
+- New services can be added without modifying existing code
+- Abstract classes define contracts for extension
 
-**Main Methods:**
-- `getServicesStatus()` - Get current status of all services
-- `startService(serviceName)` - Start a specific service
-- `stopService(serviceName)` - Stop a specific service
-- `checkServiceInstallation(service)` - Verify service installation
-- `cleanup()` - Stop all running services
+### 3. **Liskov Substitution Principle (LSP)**
+- All service implementations can substitute their base class
+- All configurators implement their respective interfaces
+- Polymorphic behavior ensured
 
-### DownloadManager (`download-manager.ts`)
-Handles file downloads, extraction, and directory operations
+### 4. **Interface Segregation Principle (ISP)**
+- Small, focused interfaces
+- Clients depend only on methods they use
+- No forced dependencies on unused functionality
 
-**Key Features:**
-- HTTP/HTTPS file downloads with progress tracking
-- ZIP file extraction with validation
-- Recursive directory deletion
-- Download resume and redirect handling
+### 5. **Dependency Inversion Principle (DIP)**
+- High-level modules depend on abstractions
+- Factory pattern for object creation
+- Dependency injection for configuration providers
 
-**Main Methods:**
-- `downloadFile(url, dest, serviceName)` - Download files with progress
-- `extractZip(zipPath, extractPath, serviceName)` - Extract ZIP archives
-- `deleteDirectory(dirPath)` - Recursively delete directories
+## 🔧 Usage Examples
 
-### ServiceConfigurator (`service-configurator.ts`)
-Configures downloaded services for proper operation
+### Adding a New Service
 
-**Key Features:**
-- Service-specific configuration generation
-- Config file templating
-- Directory structure setup
-- Environment optimization
-
-**Main Methods:**
-- `setupService(serviceName, service)` - Configure a specific service
-- Individual setup methods for each service type
-
-### ConfigManager (`config-manager.ts`)
-Manages application configuration and service metadata
-
-**Key Features:**
-- JSON configuration file management
-- Service status persistence
-- Default configuration generation
-- Configuration validation
-
-**Main Methods:**
-- `initialize()` - Set up Sonna directories and config
-- `getConfig()` - Read current configuration
-- `updateConfig(updates)` - Update configuration
-- `updateServiceStatus(serviceName, updates)` - Update service status
-- `resetInstallationStatus()` - Reset all services to uninstalled
-
-## Usage
-
-### Basic Import
+1. **Create service setup class:**
 ```typescript
-import { 
-  ServiceManager, 
-  DownloadManager, 
-  ServiceConfigurator, 
-  ConfigManager 
-} from './utils';
+// services/PostgreSQLServiceSetup.ts
+import { BaseServiceSetup } from '../base/BaseServiceSetup';
+
+export class PostgreSQLServiceSetup extends BaseServiceSetup {
+  async setupService(extractPath: string): Promise<void> {
+    // PostgreSQL-specific setup logic
+  }
+}
 ```
 
-### Type Imports
+2. **Update service factory:**
 ```typescript
-import type { 
-  ServiceConfig, 
-  DownloadProgress, 
-  SonnaConfig 
-} from './utils';
+// factories/ServiceSetupFactory.ts
+case 'postgresql':
+  return new PostgreSQLServiceSetup(this.configProvider);
 ```
 
-### Example Usage
+### Adding a New Web Server
+
+1. **Create configurator class:**
 ```typescript
-// Initialize managers
-const serviceManager = new ServiceManager();
-const configManager = new ConfigManager();
+// webservers/LighttpdConfigurator.ts
+import { BaseWebServerConfigurator } from '../base/BaseWebServerConfigurator';
 
-// Initialize application
-await configManager.initialize();
-
-// Get service status
-const status = await serviceManager.getServicesStatus();
-
-// Start a service
-const result = await serviceManager.startService('apache');
+export class LighttpdConfigurator extends BaseWebServerConfigurator {
+  async updateConfiguration(): Promise<void> {
+    // Lighttpd-specific configuration
+  }
+}
 ```
 
-## Design Principles
+2. **Update web server factory:**
+```typescript
+// factories/WebServerConfiguratorFactory.ts
+case 'lighttpd':
+  return new LighttpdConfigurator(this.configProvider, extractPath);
+```
 
-1. **Separation of Concerns**: Each utility has a single responsibility
-2. **Async/Await**: Modern async patterns throughout
-3. **Error Handling**: Comprehensive error handling with meaningful messages
-4. **Type Safety**: Full TypeScript typing for better development experience
-5. **Scalability**: Easy to add new services and functionality
-6. **Testability**: Modular design enables easy unit testing
+## 🧪 Testing
 
-## Adding New Services
+Each component can be tested independently:
 
-1. Add service configuration to `ConfigManager.getDefaultConfig()`
-2. Add installation verification logic to `ServiceManager.checkServiceInstallation()`
-3. Add service-specific setup to `ServiceConfigurator.setupService()`
-4. Add start/stop logic to `ServiceManager.spawnService()` if needed
+```typescript
+// Example unit test
+const mockConfigProvider = new MockConfigProvider();
+const phpSetup = new PHPServiceSetup(mockConfigProvider);
+await phpSetup.setupService('/path/to/php');
+```
 
-## Error Handling
+## 🚀 Benefits
 
-All utilities follow consistent error handling patterns:
-- Return `{ success: boolean, message: string }` for operations
-- Throw detailed errors for invalid inputs
-- Log errors with context for debugging
-- Clean up resources on failure
+- **Maintainability**: Easy to modify individual services
+- **Extensibility**: Simple to add new services/configurators
+- **Testability**: Each component can be unit tested
+- **Reusability**: Common functionality shared via base classes
+- **Flexibility**: Easy to swap implementations
+- **Type Safety**: Full TypeScript support with clear interfaces
 
-## Future Enhancements
+## 📚 Architecture Patterns Used
 
-- Plugin architecture for custom services
-- Service dependency management
-- Configuration templates
-- Service health monitoring
-- Backup and restore functionality 
+- **Factory Pattern**: For creating service instances
+- **Strategy Pattern**: Different setup strategies per service
+- **Template Method**: Base classes provide structure
+- **Dependency Injection**: For loose coupling
+- **Interface Segregation**: Small, focused contracts 

@@ -50,7 +50,10 @@ export class WindowService {
       this.mainWindow.loadURL('http://localhost:5173');
       // this.mainWindow.webContents.openDevTools(); // Dev tools disabled
     } else {
-      this.mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
+      // In production, dist-electron and dist are at the same level
+      const htmlPath = path.join(__dirname, '../dist/index.html');
+      console.log('Loading HTML from:', htmlPath);
+      this.mainWindow.loadFile(htmlPath);
     }
 
     this.mainWindow.once('ready-to-show', () => {

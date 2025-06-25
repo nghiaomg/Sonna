@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
@@ -35,7 +35,6 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
 
         if (result.success) {
           setLastCleanupResult(`✅ ${result.message}`);
-          // Notify parent that all services were deleted
           installedServices.forEach(service => onServiceDeleted(service.name));
         } else {
           setLastCleanupResult(`❌ ${result.message}`);
@@ -73,7 +72,6 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
   };
 
   const getTotalSize = () => {
-    // Rough estimate of installed size
     return `~${installedServices.length * 150}MB`;
   };
 
@@ -90,7 +88,6 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-          {/* Summary */}
           <div className="bg-muted p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
@@ -120,7 +117,6 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
             </div>
           </div>
 
-          {/* Cleanup Result */}
           {lastCleanupResult && (
             <div className={cn(
               "p-3 rounded-lg text-sm",
@@ -132,7 +128,6 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
             </div>
           )}
 
-          {/* Individual Services */}
           {installedServices.length > 0 ? (
             <div className="space-y-3">
               <h4 className="font-medium">{t.individualServices}</h4>
@@ -182,7 +177,6 @@ export function CleanupManager({ services, onServiceDeleted }: CleanupManagerPro
             </div>
           )}
 
-          {/* Warning */}
           {installedServices.length > 0 && (
             <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
               <AlertTriangle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />

@@ -44,6 +44,7 @@ export interface ElectronAPI {
   updateConfig: (config: any) => Promise<{ success: boolean; message?: string }>;
   downloadService: (serviceName: string) => Promise<any>;
   onDownloadProgress: (callback: any) => void;
+  removeDownloadProgressListener: (callback: any) => void;
   resetInstallationStatus: () => Promise<any>;
   refreshConfig: () => Promise<any>;
   cleanupApplications: () => Promise<any>;

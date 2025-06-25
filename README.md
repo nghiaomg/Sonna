@@ -1,151 +1,104 @@
-# 🧰 Sonna – Modern Local Development Environment for Windows
+# 🧰 Sonna v1.1.1 Beta – Modern Local Development Environment
 
-**Sonna** is a modern local web development environment manager for Windows, designed as a modern alternative to Laragon with a focus on user experience, performance, and contemporary design.
+**Sonna** is a cutting-edge local web development environment manager designed as a modern alternative to traditional solutions like Laragon, XAMPP, and WAMP. Built with performance, user experience, and contemporary design at its core.
 
-> Create – Manage – Develop local web projects with a beautiful, modern, and easy-to-use interface.
+> **Create – Manage – Develop** local web projects with a beautiful, modern, and intuitive interface.
 
-![Sonna Screenshot](public/screenshot.png)
+![Sonna v1.1.1](https://ik.imagekit.io/0lpnflx37/images/Sonna/Screenshot%202025-06-25%20192857.png)
 
-## 🚀 Key Features
+## 🚀 What's New in v1.1.1?
 
-- 🧩 **Service Management** - Control Apache, Nginx, PHP, MySQL, Redis, Node.js, and more
-- 🌐 **Virtual Host Management** - Easily create and manage .test and .local domains
-- 🗂️ **Project Auto-Detection** - Automatically discover and manage local web projects
-- 🖥️ **Integrated Terminal** - Built-in terminal for development tasks
-- ⚙️ **Visual Configuration** - Configure PHP, Apache, Nginx through a graphical interface
-- 🌙 **Beautiful Interface** - Modern UI with Light/Dark modes
-- 🔌 **Extensible** - Plugin/extension support (in development)
+### ⚡ **Non-Blocking Service Installation**
+- **Queue System**: Install multiple services simultaneously without freezing the application
+- **Priority Management**: Critical services (Apache, Nginx) get installed first
+- **Real-time Progress**: Live updates on installation status and queue position
+- **Cancellation Support**: Cancel queued installations with one click
 
-## 🎯 Benefits of Using Sonna
+### 🌐 **Multi-Language Support**
+- **Vietnamese, English, Russian, Chinese, Japanese, Korean** support
+- **Searchable Language Selector**: Find your preferred language instantly
+- **Contextual Translation**: Every interface element properly localized
+- **Automatic Detection**: Smart language detection based on system locale
 
-### Modern Alternative to Laragon
-Sonna delivers:
-- **Modern user interface** with responsive design
-- **Better performance** with optimized service management
-- **Enhanced security** with proper process isolation
-- **Multi-version compatibility** supporting older Windows versions
+### 🔧 **Advanced Configuration Management**
+- **Centralized Config System**: All service configurations managed from `C:/sonna/conf`
+- **Template-Based Generation**: Consistent, reliable configuration files
+- **Port Customization**: Configure custom ports for all services
+- **Installation Path Management**: Choose where services are installed with migration support
 
-### Perfect for Developers Who Want:
-- ✅ **Quick Setup** - Launch a development environment in minutes
-- ✅ **Visual Control** - Manage services without command line
-- ✅ **Project Organization** - Keep all local projects neatly organized
-- ✅ **High Performance** - Lightweight and fast service management
-- ✅ **Reliability** - Stable service handling with error recovery
+### 🛡️ **Enhanced Security & Stability**
+- **phpMyAdmin Security Migration**: Automatic migration from web directory to secure location
+- **MySQL Database Auto-Initialization**: Proper database setup on first install
+- **Apache Module Management**: Complete module loading with proper dependencies
+- **Service Isolation**: Better process management and error recovery
 
-## 📦 Installation
+### 🎨 **Improved User Experience**
+- **Modern Interface**: Beautiful, responsive design with dark/light mode support
+- **Queue Status Display**: Visual feedback on installation progress
+- **Service Cards**: Elegant service management with version information
+- **Error Handling**: Graceful error management with helpful messages
 
-### System Requirements
-- **Windows 10/11** or **Windows Server 2012 R2+**
-- **4GB RAM** minimum (8GB recommended)
-- **500MB** disk space
+## 🎯 Why Choose Sonna?
 
-### Download & Install
-1. Download the latest version from [Releases](https://github.com/nghiaomg/sonna/releases)
-2. Run the installer with Administrator privileges
-3. Follow the installation instructions
-4. Launch Sonna and initialize your development environment
+### **For Developers Who Want Speed**
+- ✅ **Instant Setup** – Get a full development environment running in minutes
+- ✅ **No Blocking** – Continue working while services install in the background
+- ✅ **Smart Queue** – Automatic prioritization ensures critical services install first
+- ✅ **Multiple Versions** – Run different PHP/Node.js versions simultaneously
 
-### Build from Source
-```bash
-# Clone repository
-git clone https://github.com/nghiaomg/sonna.git
-cd sonna
+### **For Teams Who Need Reliability**
+- ✅ **Consistent Configuration** – Template-based configs ensure identical setups
+- ✅ **Version Control Friendly** – All configurations are trackable and shareable
+- ✅ **Error Recovery** – Robust error handling with automatic retry mechanisms
+- ✅ **Security First** – Secure defaults and automatic security improvements
 
-# Install dependencies
-npm install
+### **For Projects That Demand Performance**
+- ✅ **Optimized Services** – Pre-configured for development performance
+- ✅ **Resource Management** – Intelligent resource allocation and monitoring
+- ✅ **Background Processing** – Non-blocking operations keep your workflow smooth
+- ✅ **Modern Architecture** – Built with latest technologies for maximum efficiency
 
-# Run development mode
-npm run dev
+### **For Users Who Value Experience**
+- ✅ **Beautiful Interface** – Modern, intuitive design that's pleasant to use
+- ✅ **Global Accessibility** – Full internationalization with 6+ languages
+- ✅ **Smart Automation** – Automatic detection and configuration of projects
+- ✅ **Visual Feedback** – Clear progress indicators and status updates
 
-# Build production
-npm run build
-```
+## 🌟 What You Get Out of the Box
 
-### Development
-For development, you can use the following commands:
-```bash
-# Install dependencies
-pnpm install
+### **Complete Development Stack**
+- **Web Servers**: Apache 2.4.x, Nginx 1.24.x with optimized configurations
+- **Databases**: MySQL 9.x, MongoDB 7.x, Redis 5.x with auto-initialization
+- **Languages**: PHP 8.4/8.3/8.2/8.1, Node.js 20/18/16 with version switching
+- **Tools**: phpMyAdmin 5.2.x with enhanced security
 
-# Run development mode (with hot reload)
-pnpm dev
-# or use the batch file
-dev.bat
+### **Professional Features**
+- **Virtual Host Management** – Automatic .test and .local domain creation
+- **SSL Certificate Generation** – HTTPS development out of the box
+- **Project Auto-Detection** – Smart discovery of WordPress, Laravel, and custom projects
+- **Configuration Templates** – Industry-standard configurations with customization options
 
-# Build for production
-pnpm build
+### **Enterprise-Ready Capabilities**
+- **Centralized Configuration** – All settings managed from a single location
+- **Backup & Restore** – Automatic configuration backups before changes
+- **Migration Tools** – Seamless upgrades and environment transfers
+- **Security Hardening** – Built-in security best practices and automatic improvements
 
-# Create Windows installer
-pnpm dist:win
-```
+## 🔥 Perfect for Modern Development
 
-## 🏃‍♂️ Getting Started
+Whether you're building **WordPress sites**, **Laravel applications**, **React frontends**, or **full-stack projects**, Sonna provides the perfect local development environment with:
 
-### First Launch
-1. **Initialize Environment** - Sonna will create necessary folders and configurations
-2. **Install Services** - Select the development services you want to install (PHP, Apache, MySQL, etc.)
-3. **Create First Project** - Set up a new web project or import an existing one
-4. **Start Developing** - Begin coding with a fully configured local environment
+- **Zero Configuration Hassle** – Works perfectly out of the box
+- **Maximum Flexibility** – Customize everything to match your workflow
+- **Professional Results** – Production-ready configurations for all services
+- **Future-Proof Architecture** – Regular updates with latest technologies
 
-### Quick Setup Guide
-1. Open Sonna
-2. Go to the **Install** tab
-3. Select the services you need (recommended: PHP + Apache + MySQL)
-4. Click **Install** and wait for completion
-5. Switch to the **Services** tab and start your services
-6. Your development environment is ready!
+## 💫 Join the Future of Local Development
 
-## 🎨 User Interface
+Sonna v1.1.1 represents a significant leap forward in local development environment management. With its non-blocking architecture, comprehensive internationalization, and focus on user experience, it's designed for developers who demand the best tools for their craft.
 
-### Intuitive Design
-- **Tab-based Navigation** - Services, Install, Cleanup sections
-- **Status Indicators** - Visual feedback on service status
-- **Progress Tracking** - Real-time installation and operation progress
-- **Responsive Layout** - Works well on different screen sizes
-
-### Accessibility
-- **Keyboard Navigation** support
-- **Screen Reader** friendly
-- **High Contrast** mode support
-- **Customizable** interface elements
-
-## 🔧 Configuration
-
-### Service Configuration
-- **Apache** - Document root directory, virtual hosts, modules
-- **PHP** - Version switching, extensions, php.ini settings
-- **MySQL** - Database management, user accounts
-- **Nginx** - Alternative web server configuration
-
-### Project Settings
-- **Auto-detection** of local projects
-- **Custom domains** (.test, .local, .dev)
-- **SSL certificates** for HTTPS development
-- **Environment variable** management
-
-## 🔒 Security & Privacy
-
-### Security Features
-- **Process Isolation** - Services run in separate processes
-- **Permission Management** - Minimum required permissions
-- **Secure by Default** - Safe configurations out of the box
-- **Regular Updates** - Security patches and improvements
-
-### Privacy
-- **No Tracking Data** - We don't collect usage data
-- **Local Operation** - Everything runs on your machine
-- **Open Source** - Complete transparency in code
-
-## 📝 License
-
-MIT License - See the [LICENSE](LICENSE) file for details.
-
-## 📞 Contact
-
-**Developer**: nghiaomg  
-**GitHub**: [https://github.com/nghiaomg](https://github.com/nghiaomg)  
-**Project**: [https://github.com/nghiaomg/sonna](https://github.com/nghiaomg/sonna)
+**Ready to transform your local development experience?**
 
 ---
 
-*Built with ❤️ to modernize local development on Windows*
+*Built with ❤️ for developers worldwide. Sonna – Where modern development begins.*

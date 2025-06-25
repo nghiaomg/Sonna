@@ -42,10 +42,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadService: (serviceName: string) => ipcRenderer.invoke('download-service', serviceName),
   onDownloadProgress: (callback: any) => ipcRenderer.on('download-progress', callback),
   removeDownloadProgressListener: (callback: any) => ipcRenderer.removeListener('download-progress', callback),
+  
+  // Installation queue management
+  getInstallationQueueStatus: () => ipcRenderer.invoke('get-installation-queue-status'),
+  cancelInstallation: (serviceName: string) => ipcRenderer.invoke('cancel-installation', serviceName),
+  onInstallationQueueStatus: (callback: any) => ipcRenderer.on('installation-queue-status', callback),
+  removeInstallationQueueStatusListener: (callback: any) => ipcRenderer.removeListener('installation-queue-status', callback),
+  
   resetInstallationStatus: () => ipcRenderer.invoke('reset-installation-status'),
   refreshConfig: () => ipcRenderer.invoke('refresh-config'),
   cleanupApplications: () => ipcRenderer.invoke('cleanup-applications'),
   deleteService: (serviceName: string) => ipcRenderer.invoke('delete-service', serviceName),
+  
+  // phpMyAdmin migration
+  checkPhpMyAdminMigration: () => ipcRenderer.invoke('check-phpmyadmin-migration'),
+  migratePhpMyAdmin: () => ipcRenderer.invoke('migrate-phpmyadmin'),
+  
+  // Web server configuration
+  updateWebServerConfigs: () => ipcRenderer.invoke('update-webserver-configs'),
+  
+  // Config directory management
+  initializeConfigDirectory: () => ipcRenderer.invoke('initialize-config-directory'),
   
   // Platform info
   platform: process.platform,
@@ -80,9 +97,17 @@ declare global {
       downloadService: (serviceName: string) => Promise<any>;
       onDownloadProgress: (callback: any) => void;
       removeDownloadProgressListener: (callback: any) => void;
+      getInstallationQueueStatus: () => Promise<any>;
+      cancelInstallation: (serviceName: string) => Promise<any>;
+      onInstallationQueueStatus: (callback: any) => void;
+      removeInstallationQueueStatusListener: (callback: any) => void;
       resetInstallationStatus: () => Promise<any>;
       cleanupApplications: () => Promise<any>;
       deleteService: (serviceName: string) => Promise<any>;
+      checkPhpMyAdminMigration: () => Promise<{ needsMigration: boolean }>;
+      migratePhpMyAdmin: () => Promise<{ success: boolean; message: string }>;
+      updateWebServerConfigs: () => Promise<void>;
+      initializeConfigDirectory: () => Promise<void>;
       platform: string;
     };
   }

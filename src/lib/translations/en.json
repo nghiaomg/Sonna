@@ -115,5 +115,21 @@
   "selectService": "Select Service",
   "selectServiceDesc": "Choose a service to add to your dashboard",
   "searchServices": "Search services...",
-  "noServicesFound": "No services found"
+  "noServicesFound": "No services found",
+  
+  "projects_refresh": "Refresh",
+  "projects_refresh_tooltip": "Refresh projects list",
+  
+  "phpmyadmin_migration_title": "phpMyAdmin Migration Required",
+  "phpmyadmin_migration_warning": "Security Improvement Required",
+  "phpmyadmin_migration_description": "Your phpMyAdmin installation is currently in the www folder where it could be accidentally modified or deleted. We recommend moving it to a secure location outside the web directory.",
+  "phpmyadmin_migration_from": "From:",
+  "phpmyadmin_migration_to": "To:",
+  "phpmyadmin_migration_benefits": "After migration, phpMyAdmin will still be accessible at localhost/phpmyadmin but will be protected from accidental modifications.",
+  "phpmyadmin_migration_skip": "Skip for Now",
+  "phpmyadmin_migration_migrate": "Migrate Now",
+  "phpmyadmin_migration_migrating": "Migrating...",
+  
+  "language_selector_placeholder": "Search language...",
+  "language_selector_label": "Language"
 } 

@@ -1,13 +1,7 @@
-import type { ServiceConfig, SonnaConfig } from '@/types';
+import type { SonnaConfig } from '@/types';
 import { DEFAULT_CONFIG } from '@/config/default-config';
 
-/**
- * Config Manager class for handling configuration operations
- */
 export class ConfigManager {
-  /**
-   * Get Sonna configuration
-   */
   static async getSonnaConfig(): Promise<SonnaConfig> {
     if (!window.electronAPI) {
       return DEFAULT_CONFIG as SonnaConfig;
@@ -25,47 +19,42 @@ export class ConfigManager {
     }
   }
 
-  /**
-   * Get services for download manager
-   */
   static async getDownloadServices(): Promise<any[]> {
     const config = await this.getSonnaConfig();
     const services: any[] = [];
     
     try {
-      // Add PHP versions
       if (config.services.php && config.services.php.versions) {
-        Object.entries(config.services.php.versions).forEach(([version, phpConfig]) => {
+        Object.entries(config.services.php.versions).forEach(([versionKey, phpConfig]) => {
           services.push({
-            name: `php-${version}`,
-            displayName: phpConfig.displayName || `PHP ${version}`,
-            version: phpConfig.version || version,
+            name: `php-${versionKey}`,  
+            displayName: phpConfig.displayName || `PHP ${versionKey}`,
+            version: phpConfig.version || versionKey,
             installed: phpConfig.installed || false,
             downloadUrl: phpConfig.downloadUrl || ''
           });
         });
       }
       
-      // Add Node.js versions
       if (config.services.nodejs && config.services.nodejs.versions) {
-        Object.entries(config.services.nodejs.versions).forEach(([version, nodeConfig]) => {
+        Object.entries(config.services.nodejs.versions).forEach(([versionKey, nodeConfig]) => {
           services.push({
-            name: `nodejs-${version}`,
-            displayName: nodeConfig.displayName || `Node.js ${version}`,
-            version: nodeConfig.version || version,
+            name: `nodejs-${versionKey}`,
+            displayName: nodeConfig.displayName || `Node.js ${versionKey}`,
+            version: nodeConfig.version || versionKey,
             installed: nodeConfig.installed || false,
             downloadUrl: nodeConfig.downloadUrl || ''
           });
         });
       }
       
-      // Add other services (non-versioned)
-      const otherServices = ['apache', 'nginx', 'mysql', 'mongodb', 'phpmyadmin', 'redis'];
-      otherServices.forEach(serviceName => {
-        const service = (config.services as any)[serviceName];
-        if (service) {
+      Object.entries(config.services).forEach(([serviceName, serviceConfig]) => {
+        if (serviceName === 'php' || serviceName === 'nodejs') return;
+        
+        const service = serviceConfig as any;
+        if (service && service.name) {
           services.push({
-            name: service.name || serviceName,
+            name: service.name,
             displayName: service.displayName || serviceName,
             version: service.version || 'latest',
             installed: service.installed || false,
@@ -73,9 +62,9 @@ export class ConfigManager {
           });
         }
       });
+      
     } catch (error) {
       console.error('Error processing services:', error);
-      // Return fallback services if there's an error
       return [
         { name: 'apache', displayName: 'Apache', version: '2.4.63', installed: false, downloadUrl: '' },
         { name: 'mysql', displayName: 'MySQL', version: '8.0.35', installed: false, downloadUrl: '' },
@@ -84,12 +73,10 @@ export class ConfigManager {
       ];
     }
     
+    console.log('Generated services:', services);
     return services;
   }
 
-  /**
-   * Change installation path
-   */
   static async changeInstallationPath(newPath: string, moveFiles: boolean): Promise<{
     success: boolean;
     newPath?: string;
@@ -111,9 +98,6 @@ export class ConfigManager {
     }
   }
 
-  /**
-   * Select folder using system dialog
-   */
   static async selectFolder(): Promise<string> {
     if (!window.electronAPI) {
       return '';
