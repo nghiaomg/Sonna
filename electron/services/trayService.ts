@@ -15,17 +15,25 @@ export class TrayService {
     this.isDev = isDev;
   }
 
+    /**
+   * Sets the window service reference for proper app shutdown
+   */
   setWindowService(windowService: any) {
     this.windowService = windowService;
   }
 
+  /**
+   * Sets the main window reference for show/hide functionality
+   */
   setMainWindow(window: Electron.BrowserWindow) {
     this.mainWindow = window;
   }
 
+  /**
+   * Gets the appropriate icon path for development or production environment
+   */
   getIconPath(): string {
     if (this.isDev) {
-      // In development, try multiple paths
       const devPaths = [
         path.join(__dirname, '../../public/logo.ico'),
         path.join(__dirname, '../../build/icons/icon.ico'),
@@ -39,24 +47,14 @@ export class TrayService {
         }
       }
     } else {
-      // In production, try multiple paths with priority
       const appPath = app.getAppPath();
       const appDir = path.dirname(appPath);
       
       const prodPaths = [
-        // Extra resources directory (highest priority)
         path.join(process.resourcesPath, 'icons/icon.ico'),
-        
-        // Public directory in resources
         path.join(process.resourcesPath, 'public/logo.ico'),
-        
-        // App root (where we copied files)
         path.join(appDir, 'logo.ico'),
-        
-        // Resources directory
         path.join(process.resourcesPath, 'logo.ico'),
-        
-        // Other possible locations
         path.join(__dirname, '../../logo.ico'),
         path.join(__dirname, '../../dist/logo.ico'),
         path.join(__dirname, '../../build/icons/icon.ico'),
@@ -71,32 +69,28 @@ export class TrayService {
       }
     }
     
-    // Fallback - return default path
     return path.join(__dirname, '../../build/icons/icon.ico');
-  }
+    }
 
+  /**
+   * Creates and initializes the system tray with context menu
+   */
   createTray() {
-    // Create tray icon
     const iconPath = this.getIconPath();
     console.log('Using icon path for tray:', iconPath);
     
-    // Create native image with proper scaling
     let trayIcon = nativeImage.createFromPath(iconPath);
     
-    // Ensure icon is visible by setting proper size
     if (process.platform === 'win32') {
-      // Windows requires specific sizes for tray icons
       trayIcon = trayIcon.resize({ width: 16, height: 16 });
     }
     
     this.tray = new Tray(trayIcon);
     
-    // Update tray context menu with service status
     this.updateTrayMenu();
     
     this.tray.setToolTip('Sonna - Local Development Environment');
     
-    // Double click to show/hide window
     this.tray.on('double-click', () => {
       if (this.mainWindow) {
         if (this.mainWindow.isVisible()) {
@@ -109,13 +103,15 @@ export class TrayService {
     });
 
     return this.tray;
-  }
+    }
 
+  /**
+   * Updates the tray context menu with current service status
+   */
   async updateTrayMenu() {
     if (!this.tray) return;
     
     try {
-      // Get current service status
       const servicesStatus = await this.serviceManager.getServicesStatus();
       
       const serviceMenuItems = Object.entries(servicesStatus).map(([serviceName, status]) => {
@@ -124,13 +120,13 @@ export class TrayService {
         
         if (!isInstalled) {
           return {
-            label: `${serviceName} (Chưa cài đặt)`,
+            label: `${serviceName} (Not Installed)`,
             enabled: false
           };
         }
         
         return {
-          label: `${serviceName} (${isRunning ? 'Đang chạy' : 'Dừng'})`,
+          label: `${serviceName} (${isRunning ? 'Running' : 'Stopped'})`,
           click: async () => {
             try {
               if (isRunning) {
@@ -138,7 +134,6 @@ export class TrayService {
               } else {
                 await this.serviceManager.startService(serviceName);
               }
-              // Update menu after service state change
               setTimeout(() => this.updateTrayMenu(), 1000);
             } catch (error) {
               console.error(`Failed to toggle ${serviceName}:`, error);
@@ -146,7 +141,7 @@ export class TrayService {
           }
         };
       });
-      
+
       const contextMenu = Menu.buildFromTemplate([
         {
           label: 'Sonna - Local Dev Environment',
@@ -154,9 +149,9 @@ export class TrayService {
         },
         { type: 'separator' },
         ...serviceMenuItems,
-        { type: 'separator' },
+                { type: 'separator' },
         {
-          label: 'Mở Sonna',
+          label: 'Open Sonna',
           click: () => {
             if (this.mainWindow) {
               this.mainWindow.show();
@@ -165,7 +160,7 @@ export class TrayService {
           }
         },
         {
-          label: 'Khởi động tất cả dịch vụ',
+          label: 'Start All Services',
           click: async () => {
             try {
               const servicesStatus = await this.serviceManager.getServicesStatus();
@@ -181,7 +176,7 @@ export class TrayService {
           }
         },
         {
-          label: 'Dừng tất cả dịch vụ',
+          label: 'Stop All Services',
           click: async () => {
             try {
               await this.serviceManager.cleanup();
@@ -193,14 +188,12 @@ export class TrayService {
         },
         { type: 'separator' },
         {
-          label: 'Thoát',
+          label: 'Exit',
           click: async () => {
-            // Set quitting flag to allow proper shutdown
             if (this.windowService && typeof this.windowService.setIsQuitting === 'function') {
               this.windowService.setIsQuitting(true);
             }
             
-            // Force cleanup and quit
             try {
               await this.serviceManager.cleanup();
             } catch (error) {
@@ -211,12 +204,11 @@ export class TrayService {
           }
         }
       ]);
-      
+
       this.tray.setContextMenu(contextMenu);
-    } catch (error) {
+        } catch (error) {
       console.error('Failed to update tray menu:', error);
       
-      // Fallback simple menu
       const contextMenu = Menu.buildFromTemplate([
         {
           label: 'Sonna - Local Dev Environment',
@@ -224,7 +216,7 @@ export class TrayService {
         },
         { type: 'separator' },
         {
-          label: 'Mở Sonna',
+          label: 'Open Sonna',
           click: () => {
             if (this.mainWindow) {
               this.mainWindow.show();
@@ -233,14 +225,12 @@ export class TrayService {
           }
         },
         {
-          label: 'Thoát',
+          label: 'Exit',
           click: async () => {
-            // Set quitting flag to allow proper shutdown
             if (this.windowService && typeof this.windowService.setIsQuitting === 'function') {
               this.windowService.setIsQuitting(true);
             }
             
-            // Force cleanup and quit
             try {
               await this.serviceManager.cleanup();
             } catch (error) {
@@ -256,16 +246,22 @@ export class TrayService {
     }
   }
 
+  /**
+   * Shows a balloon notification when the window is minimized to tray
+   */
   showMinimizeNotification() {
     if (this.tray && this.mainWindow && !this.mainWindow.isVisible()) {
       this.tray.displayBalloon({
         iconType: 'info',
         title: 'Sonna',
-        content: 'Ứng dụng đang chạy ngầm. Click vào biểu tượng khay hệ thống để mở lại.'
+        content: 'Application is running in the background. Click the tray icon to reopen.'
       });
     }
   }
 
+  /**
+   * Returns the tray instance
+   */
   getTray() {
     return this.tray;
   }
