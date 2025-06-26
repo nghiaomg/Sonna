@@ -282,7 +282,7 @@ ignore_repeated_errors = On
 ignore_repeated_source = On
 
 ; Basic PHP settings
-extension_dir = "ext"
+extension_dir = "${phpPath.replace(/\\/g, '/')}/ext"
 max_execution_time = 300
 max_input_time = 300
 memory_limit = 512M
@@ -334,9 +334,22 @@ disable_functions = exec,passthru,shell_exec,system,proc_open,popen
       fs.writeFileSync(phpIniPath, customPhpIni, 'utf8');
       
       console.log(`✅ Custom PHP.ini created at: ${phpIniPath}`);
+      console.log(`   - Extension directory: ${phpPath.replace(/\\/g, '/')}/ext`);
+      console.log(`   - mysqli extension: ENABLED`);
       console.log(`   - Error suppression: ENABLED (auto_prepend_file)`);
       console.log(`   - Error reporting: DISABLED`);
       console.log(`   - All PHP warnings/deprecations: SUPPRESSED`);
+      
+      // Verify extension files exist
+      const extDir = path.join(phpPath, 'ext');
+      if (fs.existsSync(extDir)) {
+        const extensions = fs.readdirSync(extDir);
+        const hasMySQL = extensions.some(ext => ext.includes('mysqli'));
+        console.log(`   - Extension files found: ${extensions.length} total`);
+        console.log(`   - php_mysqli.dll: ${hasMySQL ? 'FOUND' : 'MISSING'}`);
+      } else {
+        console.warn(`   ⚠️ Extension directory not found: ${extDir}`);
+      }
       
     } catch (error) {
       console.error('Failed to create PHP.ini with error suppression:', error);

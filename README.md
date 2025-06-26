@@ -1,10 +1,18 @@
-# 🧰 Sonna v1.4.1 – Modern Local Development Environment
+# 🧰 Sonna v1.4.2 – Modern Local Development Environment
 
 **Sonna** is a cutting-edge local web development environment manager designed as a modern alternative to traditional solutions like Laragon, XAMPP, and WAMP. Built with performance, user experience, and contemporary design at its core.
 
 > **Create – Manage – Develop** local web projects with a beautiful, modern, and intuitive interface.
 
-![Sonna v1.4.1](https://ik.imagekit.io/0lpnflx37/images/Sonna/Screenshot%202025-06-25%20192857.png)
+![Sonna v1.4.2](https://ik.imagekit.io/0lpnflx37/images/Sonna/Screenshot%202025-06-25%20192857.png)
+
+## 🚀 What's New in v1.4.2?
+
+### 🔧 **Critical PHP/Database Fixes**
+- **Complete mysqli Extension Fix**: Resolved "mysqli extension is missing" error with absolute extension paths and comprehensive debugging
+- **Enhanced Extension Loading**: Improved PHP extension verification and loading process with detailed diagnostic information
+- **Apache-PHP Integration**: Auto-restart Apache after PHP installation to ensure proper extension loading
+- **phpMyAdmin Diagnostics**: Added detailed debug information for troubleshooting extension issues
 
 ## 🚀 What's New in v1.4.1?
 
@@ -101,7 +109,8 @@ Whether you're building **WordPress sites**, **Laravel applications**, **React f
 
 ## 📋 Version History
 
-- **v1.4.1** (Current) - UI/UX improvements, service card optimization, progress display enhancement
+- **v1.4.2** (Current) - Critical PHP/Database fixes, complete mysqli extension support, enhanced diagnostics
+- **v1.4.1** - UI/UX improvements, service card optimization, progress display enhancement
 - **v1.4.0** - Enhanced PHP/Database integration, system tray improvements, codebase optimization
 - **v1.3.x** - Modern UI design system, template management, intelligent automation
 - **v1.2.x** - Smart phpMyAdmin integration, queue system implementation

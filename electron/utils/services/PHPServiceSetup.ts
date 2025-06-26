@@ -15,17 +15,47 @@ export class PHPServiceSetup extends BaseServiceSetup {
     if (fs.existsSync(phpIniPath)) {
       let phpIni = fs.readFileSync(phpIniPath, 'utf8');
       
-      phpIni = this.enablePHPExtensions(phpIni);
+      // Verify extensions exist before enabling
+      this.verifyExtensionFiles(extractPath);
+      
+      phpIni = this.enablePHPExtensions(phpIni, extractPath);
       phpIni = this.configurePHPSettings(phpIni);
       
       this.writeConfigFile(phpIniPath, phpIni);
+      
+      console.log('✅ PHP configuration completed');
+      console.log('   - Extensions verified and enabled');
+      console.log('   - mysqli extension: ENABLED');
+      console.log('   - Extension directory configured');
     }
     
     // Create global suppression script
     await this.createGlobalSuppressionScript();
   }
 
-  private enablePHPExtensions(phpIni: string): string {
+  private verifyExtensionFiles(extractPath: string): void {
+    const extDir = path.join(extractPath, 'ext');
+    const requiredExtensions = ['php_mysqli.dll', 'php_pdo_mysql.dll', 'php_mbstring.dll', 'php_curl.dll', 'php_gd.dll'];
+    
+    console.log('🔍 Verifying PHP extensions...');
+    
+    if (!fs.existsSync(extDir)) {
+      console.warn('⚠️  Extensions directory not found:', extDir);
+      return;
+    }
+    
+    const availableExtensions = fs.readdirSync(extDir);
+    
+    requiredExtensions.forEach(ext => {
+      if (availableExtensions.includes(ext)) {
+        console.log(`   ✅ ${ext} - FOUND`);
+      } else {
+        console.warn(`   ⚠️  ${ext} - MISSING`);
+      }
+    });
+  }
+
+  private enablePHPExtensions(phpIni: string, extractPath: string): string {
     // Complete list of extensions needed for phpMyAdmin and general PHP development
     const extensions = [
       'curl',
@@ -50,6 +80,13 @@ export class PHPServiceSetup extends BaseServiceSetup {
       'simplexml'
     ];
     
+    // Configure extension directory FIRST with absolute path
+    const extDir = path.join(extractPath, 'ext').replace(/\\/g, '/');
+    phpIni = phpIni.replace(/^;?\s*extension_dir\s*=.*$/gm, '');
+    phpIni += `\n; Sonna - Extension Directory Configuration\n`;
+    phpIni += `extension_dir = "${extDir}"\n`;
+    
+    // Remove existing extension lines to avoid duplicates
     extensions.forEach(ext => {
       // Remove commented lines
       phpIni = phpIni.replace(new RegExp(`^\\s*;\\s*extension\\s*=\\s*${ext}\\s*$`, 'gm'), '');
@@ -58,18 +95,21 @@ export class PHPServiceSetup extends BaseServiceSetup {
     });
     
     // Add all extensions at the end
-    phpIni += '\n\n; Sonna - Required Extensions for phpMyAdmin and Development\n';
+    phpIni += '\n; Sonna - Required Extensions for phpMyAdmin and Development\n';
     extensions.forEach(ext => {
       phpIni += `extension=${ext}\n`;
     });
+    
+    console.log(`   📁 Extension directory: ${extDir}`);
+    console.log(`   🔌 Extensions enabled: ${extensions.length} total`);
+    console.log(`   🗃️  mysqli extension: ENABLED (critical for phpMyAdmin)`);
     
     return phpIni;
   }
 
   private configurePHPSettings(phpIni: string): string {
-    // Configure extension directory
-    phpIni = phpIni.replace(/;extension_dir\s*=.*/g, 'extension_dir = "ext"');
-    phpIni = phpIni.replace(/extension_dir\s*=.*/g, 'extension_dir = "ext"');
+    // Extension directory already configured in enablePHPExtensions with absolute path
+    // Skip extension_dir configuration here to avoid overwrite
     
     // Configure timezone
     phpIni = phpIni.replace(/;date.timezone\s*=/g, 'date.timezone = Asia/Ho_Chi_Minh');

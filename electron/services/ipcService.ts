@@ -1635,6 +1635,20 @@ export class IpcService {
           // Note: Apache configurator will automatically handle requirement page removal
           await this.serviceConfigurator.updateApacheConfiguration();
           
+          // Force restart Apache to reload PHP module with new extensions
+          try {
+            const apacheRunning = await this.serviceManager.isServiceRunning('apache');
+            if (apacheRunning) {
+              console.log('🔄 Restarting Apache to reload PHP extensions...');
+              await this.serviceManager.stopService('apache');
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+              await this.serviceManager.startService('apache');
+              console.log('✅ Apache restarted successfully');
+            }
+          } catch (error) {
+            console.warn('⚠️ Failed to restart Apache:', error);
+          }
+          
           return {
             success: true,
             message: `PHP integrated with Apache successfully ${phpConfigResult.phpDetected ? '(with error suppression)' : ''}`

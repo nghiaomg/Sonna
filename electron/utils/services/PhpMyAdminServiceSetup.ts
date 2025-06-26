@@ -8,6 +8,11 @@ export class PhpMyAdminServiceSetup extends BaseServiceSetup {
     
     const configContent = this.generatePhpMyAdminConfig(mysqlPort);
     this.writeConfigFile(configPath, configContent);
+    
+    console.log('✅ phpMyAdmin configuration completed');
+    console.log('   - MySQL connection configured');
+    console.log('   - mysqli extension FORCED in config');
+    console.log('   - Error suppression enabled');
   }
 
   private generatePhpMyAdminConfig(mysqlPort: number): string {
@@ -22,6 +27,34 @@ error_reporting(0);
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 set_error_handler(function() { return true; }, E_ALL);
+
+// Force mysqli extension check and load
+if (!extension_loaded('mysqli')) {
+    // Debug information for troubleshooting
+    $ext_dir = ini_get('extension_dir');
+    $mysqli_file = $ext_dir . '/php_mysqli.dll';
+    
+    // Try to load mysqli extension if not loaded
+    if (function_exists('dl') && !ini_get('safe_mode')) {
+        @dl('php_mysqli.dll');
+    }
+    
+    // If still not available, show detailed error
+    if (!extension_loaded('mysqli')) {
+        $debug_info = '';
+        $debug_info .= '<h3>Debug Information:</h3>';
+        $debug_info .= '<p><strong>Extension Directory:</strong> ' . $ext_dir . '</p>';
+        $debug_info .= '<p><strong>mysqli DLL Path:</strong> ' . $mysqli_file . '</p>';
+        $debug_info .= '<p><strong>File Exists:</strong> ' . (file_exists($mysqli_file) ? 'YES' : 'NO') . '</p>';
+        $debug_info .= '<p><strong>Loaded Extensions:</strong> ' . implode(', ', get_loaded_extensions()) . '</p>';
+        
+        die('<h1>Critical Error: mysqli Extension Missing</h1>
+             <p>The mysqli extension is required for phpMyAdmin to function.</p>
+             <p>Please ensure PHP is properly configured with mysqli extension.</p>
+             <p><strong>Sonna Setup:</strong> This error indicates PHP extensions are not properly loaded.</p>
+             ' . $debug_info);
+    }
+}
 
 // Servers configuration
 $i = 0;
@@ -59,6 +92,20 @@ $cfg['SendErrorReports'] = 'never';
 
 // Force mysqli extension usage
 $cfg['Servers'][$i]['extension'] = 'mysqli';
+
+// Additional mysqli-specific settings
+$cfg['Servers'][$i]['compress'] = false;
+$cfg['Servers'][$i]['AllowNoPassword'] = true;
+$cfg['Servers'][$i]['hide_db'] = '';
+
+// Force specific database connection settings
+$cfg['DBG']['sql'] = false;
+$cfg['SuhosinDisableWarning'] = true;
+$cfg['McryptDisableWarning'] = true;
+$cfg['MySQLManualBase'] = false;
+
+// Disable version check to avoid network issues
+$cfg['VersionCheck'] = false;
 ?>`;
   }
 
