@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { SonnaPaths, ServicePaths, ConfigPaths, PHP_VERSIONS, PathUtils } from '../constants';
 
 export interface ConfigTemplateVariables {
   [key: string]: string | number;
@@ -10,7 +11,7 @@ export class ConfigTemplateManager {
   private templatesDir: string;
 
   constructor() {
-    this.outputDir = 'C:/sonna/conf';
+    this.outputDir = SonnaPaths.CONFIG_PATH;
     this.templatesDir = this.findTemplatesDirectory();
   }
 
@@ -108,14 +109,14 @@ export class ConfigTemplateManager {
   async generateApacheConfig(variables: ConfigTemplateVariables): Promise<string> {
     const template = this.loadTemplate('apache.conf');
     const config = this.replaceVariables(template, {
-      APACHE_ROOT: variables.APACHE_ROOT || 'C:/sonna/applications/apache/Apache24',
+      APACHE_ROOT: variables.APACHE_ROOT || `${ServicePaths.APACHE_PATH}/Apache24`,
       APACHE_PORT: variables.APACHE_PORT || 80,
       PHP_MODULE_CONFIG: variables.PHP_MODULE_CONFIG || '# PHP not configured',
       PHPMYADMIN_CONFIG: variables.PHPMYADMIN_CONFIG || '# phpMyAdmin not configured',
       ...variables
     });
 
-    const outputPath = path.join(this.outputDir, 'apache', 'httpd.conf');
+    const outputPath = ConfigPaths.APACHE_CONFIG_OUTPUT;
     fs.writeFileSync(outputPath, config, 'utf8');
     
     console.log(`Apache config generated: ${outputPath}`);
@@ -134,7 +135,7 @@ export class ConfigTemplateManager {
       ...variables
     });
 
-    const outputPath = path.join(this.outputDir, 'nginx', 'nginx.conf');
+    const outputPath = ConfigPaths.NGINX_CONFIG_OUTPUT;
     fs.writeFileSync(outputPath, config, 'utf8');
     
     console.log(`Nginx config generated: ${outputPath}`);
@@ -148,13 +149,13 @@ export class ConfigTemplateManager {
     const template = this.loadTemplate('mysql.cnf');
     const config = this.replaceVariables(template, {
       MYSQL_PORT: variables.MYSQL_PORT || 3306,
-      MYSQL_BASEDIR: variables.MYSQL_BASEDIR || 'C:/sonna/applications/mysql',
-      MYSQL_DATADIR: variables.MYSQL_DATADIR || 'C:/sonna/data/mysql',
-      MYSQL_TMPDIR: variables.MYSQL_TMPDIR || 'C:/sonna/tmp',
+      MYSQL_BASEDIR: variables.MYSQL_BASEDIR || ServicePaths.MYSQL_PATH,
+      MYSQL_DATADIR: variables.MYSQL_DATADIR || ServicePaths.MYSQL_DATA,
+      MYSQL_TMPDIR: variables.MYSQL_TMPDIR || SonnaPaths.TEMP_PATH,
       ...variables
     });
 
-    const outputPath = path.join(this.outputDir, 'mysql', 'my.cnf');
+    const outputPath = ConfigPaths.MYSQL_CONFIG_OUTPUT;
     fs.writeFileSync(outputPath, config, 'utf8');
     
     console.log(`MySQL config generated: ${outputPath}`);
@@ -168,12 +169,12 @@ export class ConfigTemplateManager {
     const template = this.loadTemplate('redis.conf');
     const config = this.replaceVariables(template, {
       REDIS_PORT: variables.REDIS_PORT || 6379,
-      REDIS_DATADIR: variables.REDIS_DATADIR || 'C:/sonna/data/redis',
+      REDIS_DATADIR: variables.REDIS_DATADIR || ServicePaths.REDIS_DATA,
       REDIS_PASSWORD: variables.REDIS_PASSWORD || '',
       ...variables
     });
 
-    const outputPath = path.join(this.outputDir, 'redis', 'redis.conf');
+    const outputPath = ConfigPaths.REDIS_CONFIG_OUTPUT;
     fs.writeFileSync(outputPath, config, 'utf8');
     
     console.log(`Redis config generated: ${outputPath}`);
@@ -188,8 +189,16 @@ export class ConfigTemplateManager {
     nginxFastCGI: string;
   }> {
     const phpDllName = this.getPHPDllName(phpVersion);
+    const dllPath = path.join(phpPath, phpDllName);
+    const dllExists = fs.existsSync(dllPath);
     
-    const apacheModule = `
+    // Create error suppression PHP.ini configuration
+    await this.createPHPIniWithErrorSuppression(phpPath);
+    
+    let apacheModule;
+    
+    if (dllExists) {
+      apacheModule = `
 # PHP ${phpVersion} Configuration
 LoadModule php_module "${phpPath.replace(/\\/g, '/')}/${phpDllName}"
 AddType application/x-httpd-php .php
@@ -197,6 +206,20 @@ PHPIniDir "${phpPath.replace(/\\/g, '/')}/"
 
 # Set index.php as directory index
 DirectoryIndex index.html index.htm index.php`;
+    } else {
+      apacheModule = `
+# PHP ${phpVersion} Configuration (INCOMPLETE INSTALLATION)
+# WARNING: Apache DLL file not found: ${phpDllName}
+# PHP files will be served as plain text until DLL is available.
+# Consider reinstalling PHP with complete package.
+#
+# LoadModule php_module "${phpPath.replace(/\\/g, '/')}/${phpDllName}"
+# AddType application/x-httpd-php .php
+# PHPIniDir "${phpPath.replace(/\\/g, '/')}/"
+
+# Set index.php as directory index (will show as text without PHP module)
+DirectoryIndex index.html index.htm index.php`;
+    }
 
     const nginxFastCGI = `
 # PHP ${phpVersion} FastCGI Configuration
@@ -208,7 +231,7 @@ location ~ \\.php$ {
 }`;
 
     // Save PHP configs
-    const phpConfigDir = path.join(this.outputDir, 'php');
+    const phpConfigDir = ConfigPaths.PHP_CONFIG_OUTPUT;
     fs.writeFileSync(path.join(phpConfigDir, 'apache-module.conf'), apacheModule, 'utf8');
     fs.writeFileSync(path.join(phpConfigDir, 'nginx-fastcgi.conf'), nginxFastCGI, 'utf8');
 
@@ -216,7 +239,153 @@ location ~ \\.php$ {
   }
 
   /**
-   * Generate phpMyAdmin configuration snippets
+   * Create custom PHP.ini with error suppression for maximum compatibility
+   */
+  private async createPHPIniWithErrorSuppression(phpPath: string): Promise<void> {
+    try {
+      // Copy global suppression script to PHP directory
+      const suppressionTemplatePath = path.join(this.templatesDir, 'sonna-global-suppression.php');
+      const suppressionFilePath = path.join(phpPath, 'sonna-error-suppression.php');
+      
+      if (fs.existsSync(suppressionTemplatePath)) {
+        fs.copyFileSync(suppressionTemplatePath, suppressionFilePath);
+        console.log(`✅ Error suppression script copied to: ${suppressionFilePath}`);
+      } else {
+        console.log('⚠️ Error suppression template not found, creating basic one');
+        
+        // Create basic error suppression if template doesn't exist
+        const basicSuppression = `<?php
+// Sonna Basic Error Suppression
+error_reporting(0);
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('html_errors', '0');
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    return true;
+}, E_ALL);
+?>`;
+        fs.writeFileSync(suppressionFilePath, basicSuppression, 'utf8');
+      }
+      
+      // Create custom PHP.ini with auto_prepend_file
+      const customPhpIni = `; Sonna Custom PHP Configuration
+; Auto-prepend error suppression for maximum compatibility
+
+; Error suppression settings
+auto_prepend_file = "${suppressionFilePath.replace(/\\/g, '/')}"
+error_reporting = 0
+display_errors = Off
+display_startup_errors = Off
+html_errors = Off
+log_errors = On
+ignore_repeated_errors = On
+ignore_repeated_source = On
+
+; Basic PHP settings
+extension_dir = "ext"
+max_execution_time = 300
+max_input_time = 300
+memory_limit = 512M
+post_max_size = 64M
+upload_max_filesize = 64M
+max_file_uploads = 20
+
+; Session settings
+session.save_handler = files
+session.use_cookies = 1
+session.use_only_cookies = 1
+session.name = PHPSESSID
+session.cookie_lifetime = 0
+session.cookie_path = /
+session.cookie_domain =
+session.cookie_httponly = 1
+session.serialize_handler = php
+
+; Date/Time settings
+date.timezone = "UTC"
+
+; Extensions for basic functionality
+extension = curl
+extension = fileinfo
+extension = gd
+extension = mbstring
+extension = mysqli
+extension = openssl
+extension = pdo_mysql
+extension = zip
+extension = json
+extension = session
+extension = filter
+extension = hash
+extension = ctype
+extension = tokenizer
+extension = xml
+extension = xmlreader
+extension = xmlwriter
+extension = dom
+extension = iconv
+extension = simplexml
+
+; Disable problematic functions for security
+disable_functions = exec,passthru,shell_exec,system,proc_open,popen
+`;
+
+      const phpIniPath = path.join(phpPath, 'php.ini');
+      fs.writeFileSync(phpIniPath, customPhpIni, 'utf8');
+      
+      console.log(`✅ Custom PHP.ini created at: ${phpIniPath}`);
+      console.log(`   - Error suppression: ENABLED (auto_prepend_file)`);
+      console.log(`   - Error reporting: DISABLED`);
+      console.log(`   - All PHP warnings/deprecations: SUPPRESSED`);
+      
+    } catch (error) {
+      console.error('Failed to create PHP.ini with error suppression:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate phpMyAdmin configuration snippets with provided PHP info (for consistency)
+   */
+  async generatePhpMyAdminConfigWithPHPInfo(
+    phpMyAdminPath: string, 
+    phpInfo: { available: boolean; path?: string; version?: string; dllName?: string }
+  ): Promise<{
+    apache: string;
+    nginx: string;
+  }> {
+    // Use provided PHP info for consistency
+    const phpConfig = phpInfo;
+
+    let phpWarning = '';
+    let phpRequirement = '';
+
+    if (!phpConfig.available) {
+      phpWarning = `
+# ⚠️  WARNING: PHP NOT CONFIGURED
+# phpMyAdmin requires PHP to function properly.
+# Please install PHP through Sonna to enable phpMyAdmin.
+# Without PHP, visiting /phpmyadmin will show raw PHP code instead of the application.`;
+
+      phpRequirement = `
+    # PHP Requirement Notice
+    # Create a simple PHP check file
+    <Location "/phpmyadmin">
+        # If PHP is not loaded, Apache will serve raw PHP files
+        # Users will see PHP source code instead of the application
+        ErrorDocument 503 "PHP module not loaded. Please install PHP through Sonna to use phpMyAdmin."
+    </Location>`;
+    } else {
+      phpWarning = `
+# ✅ PHP CONFIGURED: ${phpConfig.version} at ${phpConfig.path}
+# phpMyAdmin will function properly with PHP module loaded.`;
+    }
+
+    return this.generatePhpMyAdminConfigInternal(phpMyAdminPath, phpConfig, phpWarning, phpRequirement);
+  }
+
+  /**
+   * Generate phpMyAdmin configuration snippets (using internal detection)
    */
   async generatePhpMyAdminConfig(phpMyAdminPath: string): Promise<{
     apache: string;
@@ -249,6 +418,18 @@ location ~ \\.php$ {
 # phpMyAdmin will function properly with PHP module loaded.`;
     }
 
+    return this.generatePhpMyAdminConfigInternal(phpMyAdminPath, phpConfig, phpWarning, phpRequirement);
+  }
+
+  /**
+   * Internal method to generate phpMyAdmin configuration
+   */
+  private generatePhpMyAdminConfigInternal(
+    phpMyAdminPath: string,
+    phpConfig: { available: boolean; path?: string; version?: string; dllName?: string },
+    phpWarning: string,
+    phpRequirement: string
+  ): { apache: string; nginx: string } {
     const apache = `${phpWarning}
 # phpMyAdmin Configuration
 Alias /phpmyadmin "${phpMyAdminPath.replace(/\\/g, '/')}"
@@ -257,7 +438,7 @@ Alias /phpmyadmin "${phpMyAdminPath.replace(/\\/g, '/')}"
     Options Indexes FollowSymLinks
     AllowOverride All
     Require all granted
-    DirectoryIndex index.html index.php index.htm
+    DirectoryIndex index.html index.htm index.php
     
     # Handle phpMyAdmin routing
     RewriteEngine On
@@ -327,7 +508,7 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
 }`;
 
     // Save phpMyAdmin configs
-    const phpMyAdminConfigDir = path.join(this.outputDir, 'phpmyadmin');
+    const phpMyAdminConfigDir = ConfigPaths.PHPMYADMIN_CONFIG_OUTPUT;
     fs.writeFileSync(path.join(phpMyAdminConfigDir, 'apache.conf'), apache, 'utf8');
     fs.writeFileSync(path.join(phpMyAdminConfigDir, 'nginx.conf'), nginx, 'utf8');
 
@@ -335,7 +516,7 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
   }
 
   /**
-   * Detect PHP configuration for phpMyAdmin
+   * Detect PHP configuration for phpMyAdmin (using actual installed services)
    */
   private async detectPHPConfiguration(): Promise<{
     available: boolean;
@@ -344,38 +525,55 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
     dllName?: string;
   }> {
     try {
-      // Check common PHP installation paths
-      const phpPaths = [
-        'C:/sonna/applications/php/8.4',
-        'C:/sonna/applications/php/8.3',
-        'C:/sonna/applications/php/8.2',
-        'C:/sonna/applications/php/8.1',
-        'C:/sonna/applications/php/8.0',
-        'C:/sonna/applications/php/7.4',
-      ];
+      // First try: Use current installation pattern that scan all PHP directories
+      const phpPaths = PHP_VERSIONS.map(version => ServicePaths.getPhpPath(version));
 
       for (const phpPath of phpPaths) {
         if (fs.existsSync(phpPath)) {
-          const phpExe = path.join(phpPath, 'php.exe');
+          const version = path.basename(phpPath);
+          const phpExe = ServicePaths.getPhpExecutable(version);
+          const dllPath = ServicePaths.getPhpDll(version);
 
-          // Check for common DLL names
-          const dllNames = ['php8apache2_4.dll', 'php7apache2_4.dll'];
-
-          for (const dllName of dllNames) {
-            const dllPath = path.join(phpPath, dllName);
-            if (fs.existsSync(phpExe) && fs.existsSync(dllPath)) {
-              const version = this.extractVersionFromPath(phpPath);
-              return {
-                available: true,
-                path: phpPath,
-                version: version,
-                dllName: dllName
-              };
-            }
+          if (fs.existsSync(phpExe) && fs.existsSync(dllPath)) {
+            const dllName = path.basename(dllPath);
+            console.log(`✅ PHP ${version} detected at: ${phpPath} (${dllName})`);
+            return {
+              available: true,
+              path: phpPath,
+              version: version,
+              dllName: dllName
+            };
           }
         }
       }
 
+      // Second try: scan all subdirectories in PHP directory for flexible naming
+      const phpBaseDir = `${SonnaPaths.APPLICATIONS_PATH}/php`;
+      if (fs.existsSync(phpBaseDir)) {
+        const phpDirs = fs.readdirSync(phpBaseDir, { withFileTypes: true })
+          .filter(dirent => dirent.isDirectory())
+          .map(dirent => dirent.name);
+
+        for (const phpDirName of phpDirs) {
+          const phpPath = ServicePaths.getPhpPath(phpDirName);
+          const phpExe = ServicePaths.getPhpExecutable(phpDirName);
+          const dllPath = ServicePaths.getPhpDll(phpDirName);
+
+          if (fs.existsSync(phpExe) && fs.existsSync(dllPath)) {
+            const dllName = path.basename(dllPath);
+            const version = this.extractVersionFromPath(phpPath) || phpDirName;
+            console.log(`✅ PHP ${version} detected at: ${phpPath} (${dllName})`);
+            return {
+              available: true,
+              path: phpPath,
+              version: version,
+              dllName: dllName
+            };
+          }
+        }
+      }
+
+      console.log('⚠️ No PHP installation found with required Apache DLL');
       return { available: false };
     } catch (error) {
       console.error('Error detecting PHP configuration:', error);
@@ -447,7 +645,7 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
       const phpConfig = await this.detectPHPConfiguration();
       
       // Get phpMyAdmin path (if available)
-      const phpMyAdminPath = 'C:/sonna/applications/phpmyadmin';
+      const phpMyAdminPath = ServicePaths.PHPMYADMIN_PATH;
       const hasPhpMyAdmin = fs.existsSync(path.join(phpMyAdminPath, 'index.php'));
       
       let phpModuleConfig = '# PHP not configured';
@@ -477,7 +675,7 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
       
       // Generate Apache config with proper PHP and phpMyAdmin configuration
       const configPath = await this.generateApacheConfig({
-        APACHE_ROOT: 'C:/sonna/applications/apache/Apache24',
+        APACHE_ROOT: `${ServicePaths.APACHE_PATH}/Apache24`,
         APACHE_PORT: 80,
         PHP_MODULE_CONFIG: phpModuleConfig,
         PHPMYADMIN_CONFIG: phpMyAdminConfig
@@ -505,10 +703,62 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
   }
 
   /**
+   * Inject error suppression into phpMyAdmin for PHP 8.x compatibility
+   */
+  async injectPhpMyAdminErrorSuppression(): Promise<void> {
+    const phpMyAdminPath = ServicePaths.PHPMYADMIN_PATH;
+    const indexPhpPath = path.join(phpMyAdminPath, 'index.php');
+    
+    if (!fs.existsSync(indexPhpPath)) {
+      console.log('⚠️ phpMyAdmin index.php not found, skipping error suppression injection');
+      return;
+}
+
+    try {
+      // Read existing index.php
+      let indexPhpContent = fs.readFileSync(indexPhpPath, 'utf8');
+      
+      // Check if our suppression is already injected
+      if (indexPhpContent.includes('Sonna phpMyAdmin Error Suppression')) {
+        console.log('ℹ️ Error suppression already injected in phpMyAdmin');
+        return;
+      }
+
+      // Load error suppression template
+      const suppressionScript = this.loadTemplate('phpmyadmin-error-suppression.php');
+      
+      // Find the opening <?php tag and inject right after it
+      const phpOpenMatch = indexPhpContent.match(/^<\?php/m);
+      if (phpOpenMatch) {
+        const insertPosition = phpOpenMatch.index! + phpOpenMatch[0].length;
+        
+        // Insert suppression script right after opening <?php tag
+        const beforePhpOpen = indexPhpContent.substring(0, insertPosition);
+        const afterPhpOpen = indexPhpContent.substring(insertPosition);
+        
+        // Remove the opening <?php from suppression script since we're injecting after existing one
+        const suppressionCode = suppressionScript.replace(/^<\?php\s*/, '\n');
+        
+        indexPhpContent = beforePhpOpen + suppressionCode + afterPhpOpen;
+        
+        // Write back to file
+        fs.writeFileSync(indexPhpPath, indexPhpContent, 'utf8');
+        
+        console.log('✅ Error suppression injected into phpMyAdmin index.php');
+      } else {
+        console.log('⚠️ Could not find PHP opening tag in phpMyAdmin index.php');
+        }
+    } catch (error) {
+      console.error('Failed to inject error suppression:', error);
+      throw error;
+        }
+  }
+
+  /**
    * Create PHP requirement page for phpMyAdmin
    */
   async createPHPRequirementPage(): Promise<void> {
-    const phpMyAdminPath = 'C:/sonna/applications/phpmyadmin';
+    const phpMyAdminPath = ServicePaths.PHPMYADMIN_PATH;
     
     // Check if phpMyAdmin directory exists and has the key files
     const hasPhpMyAdminDir = fs.existsSync(phpMyAdminPath);
@@ -528,7 +778,7 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
     if (!hasIndexPhp && !hasConfigSample) {
       console.log('⚠️ phpMyAdmin installation appears incomplete (missing key files)');
       console.log('📁 Creating requirement page anyway for potential future installation...');
-    }
+  }
 
     try {
       // Load HTML template from external file
@@ -545,7 +795,7 @@ header('Content-Type: text/plain');
 echo 'PHP_WORKING_VERSION_' . PHP_VERSION;
 ?>`;
       
-      const wwwDir = 'C:/sonna/www';
+      const wwwDir = SonnaPaths.WWW_PATH;
       if (!fs.existsSync(wwwDir)) {
         fs.mkdirSync(wwwDir, { recursive: true });
       }
@@ -595,5 +845,50 @@ echo 'PHP_WORKING_VERSION_' . PHP_VERSION;
 
     console.log(`Configs backed up to: ${backupDir}`);
     return backupDir;
+  }
+
+  /**
+   * Auto-trigger PHP config regeneration when PHP is newly installed
+   */
+  async autoConfigurePHPWhenAvailable(): Promise<{
+    success: boolean;
+    phpDetected: boolean;
+    message: string;
+  }> {
+    try {
+      console.log('🔍 Auto-checking for PHP installation and configuring...');
+      
+      // Detect PHP
+      const phpConfig = await this.detectPHPConfiguration();
+      
+      if (phpConfig.available && phpConfig.path && phpConfig.version) {
+        console.log(`✅ PHP ${phpConfig.version} detected, configuring...`);
+        
+        // Generate PHP config with error suppression
+        await this.generatePHPConfig(phpConfig.path, phpConfig.version);
+        
+        // Regenerate Apache config with PHP support
+        const apacheResult = await this.regenerateApacheConfigWithPHP();
+        
+        return {
+          success: true,
+          phpDetected: true,
+          message: `PHP ${phpConfig.version} configured successfully with error suppression`
+        };
+      } else {
+        return {
+          success: true,
+          phpDetected: false,
+          message: 'No PHP installation detected, configuration skipped'
+        };
+      }
+    } catch (error) {
+      console.error('Failed to auto-configure PHP:', error);
+      return {
+        success: false,
+        phpDetected: false,
+        message: `Failed to auto-configure PHP: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
   }
 } 

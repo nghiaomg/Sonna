@@ -3,6 +3,7 @@ import { ServiceManager } from '../utils/service-manager';
 import { ConfigManager } from '../utils/config-manager';
 import { DownloadManager } from '../utils/download-manager';
 import { ServiceConfigurator } from '../utils/service-configurator';
+import { SonnaPaths, ServicePaths, PHP_VERSIONS } from '../utils/constants';
 import * as fs from 'fs';
 import * as path from 'path';
 import { WindowService } from './windowService';
@@ -198,7 +199,7 @@ export class IpcService {
     // Project handlers
     ipcMain.handle('get-projects', async () => {
       try {
-        const wwwPath = 'C:\\sonna\\www';
+        const wwwPath = SonnaPaths.WWW_PATH.replace(/\//g, '\\');
         
         if (!fs.existsSync(wwwPath)) {
           fs.mkdirSync(wwwPath, { recursive: true });
@@ -215,7 +216,7 @@ export class IpcService {
         return {
           success: false,
           projects: [],
-          wwwPath: 'C:\\sonna\\www',
+          wwwPath: SonnaPaths.WWW_PATH.replace(/\//g, '\\'),
           error: error instanceof Error ? error.message : 'Unknown error'
         };
       }
@@ -292,9 +293,109 @@ export class IpcService {
 
     // Path change handler
     ipcMain.handle('change-installation-path', async (event, newPath: string, moveFiles: boolean) => {
-      // Implementation will depend on your ConfigManager implementation
-      // This is a placeholder
-      return { success: true, newPath };
+      try {
+        console.log(`🔄 Changing installation path to: ${newPath}, moveFiles: ${moveFiles}`);
+        
+        const oldPath = SonnaPaths.BASE_PATH;
+        const normalizedNewPath = newPath.replace(/\\/g, '/');
+        
+        // Validate new path
+        if (!normalizedNewPath || normalizedNewPath.trim() === '') {
+          return { success: false, message: 'Invalid path provided' };
+        }
+        
+        // Check if path actually changed
+        if (oldPath === normalizedNewPath) {
+          return { success: true, newPath: normalizedNewPath, message: 'Path unchanged' };
+        }
+        
+        // Create new path if it doesn't exist
+        if (!fs.existsSync(normalizedNewPath)) {
+          try {
+            fs.mkdirSync(normalizedNewPath, { recursive: true });
+          } catch (error) {
+            return { success: false, message: `Failed to create directory: ${error}` };
+          }
+        }
+        
+        // Move files if requested and old path exists
+        if (moveFiles && fs.existsSync(oldPath) && oldPath !== normalizedNewPath) {
+          try {
+            console.log(`📦 Moving files from ${oldPath} to ${normalizedNewPath}`);
+            
+            // Copy all contents from old to new path
+            const items = fs.readdirSync(oldPath);
+            for (const item of items) {
+              if (item === 'config.json') continue; // Skip config file, we'll handle it separately
+              
+              const srcPath = path.join(oldPath, item);
+              const destPath = path.join(normalizedNewPath, item);
+              
+              if (fs.statSync(srcPath).isDirectory()) {
+                await this.moveDirectory(srcPath, destPath);
+              } else {
+                fs.copyFileSync(srcPath, destPath);
+                fs.unlinkSync(srcPath);
+              }
+            }
+            
+            console.log(`✅ Files moved successfully`);
+          } catch (error) {
+            console.error('Failed to move files:', error);
+            return { success: false, message: `Failed to move files: ${error}` };
+          }
+        }
+        
+        // Update SonnaPaths
+        SonnaPaths.setBasePath(normalizedNewPath);
+        console.log(`📍 SonnaPaths updated to: ${SonnaPaths.BASE_PATH}`);
+        
+        // Update config with new path
+        try {
+          const configResult = await this.configManager.getConfig();
+          if (configResult.success && configResult.config) {
+            // Update installPath in config
+            configResult.config.installPath = normalizedNewPath;
+            
+            // Update all service paths in config to use new base path
+            this.updateServicePathsInConfig(configResult.config, normalizedNewPath);
+            
+            // Save config to new location
+            const newConfigPath = `${normalizedNewPath}/config.json`;
+            await this.configManager.saveConfigToPath(configResult.config, newConfigPath);
+            
+            // Remove old config file if we moved files
+            if (moveFiles && fs.existsSync(oldPath) && oldPath !== normalizedNewPath) {
+              const oldConfigPath = `${oldPath}/config.json`;
+              if (fs.existsSync(oldConfigPath)) {
+                fs.unlinkSync(oldConfigPath);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to update config:', error);
+          return { success: false, message: `Failed to update config: ${error}` };
+        }
+        
+        // Update PathInitializer
+        try {
+          const { PathInitializer } = require('../utils/path-initializer');
+          await PathInitializer.updateBasePath(normalizedNewPath);
+        } catch (error) {
+          console.error('Failed to update PathInitializer:', error);
+          // Don't fail the whole operation for this
+        }
+        
+        console.log(`✅ Installation path changed successfully to: ${normalizedNewPath}`);
+        return { 
+          success: true, 
+          newPath: normalizedNewPath,
+          message: `Installation path updated to ${normalizedNewPath}`
+        };
+      } catch (error) {
+        console.error('Failed to change installation path:', error);
+        return { success: false, message: `Failed to change path: ${error}` };
+      }
     });
 
     // Window control handlers
@@ -330,7 +431,7 @@ export class IpcService {
 
     ipcMain.handle('refresh-config', async () => {
       try {
-        const configPath = 'C:/sonna/config.json';
+        const configPath = SonnaPaths.CONFIG_FILE;
         
         if (fs.existsSync(configPath)) {
           fs.unlinkSync(configPath);
@@ -354,7 +455,7 @@ export class IpcService {
 
     // Cleanup handlers
     ipcMain.handle('cleanup-applications', async () => {
-      const applicationsPath = 'C:/sonna/applications';
+      const applicationsPath = SonnaPaths.APPLICATIONS_PATH;
       
       try {
         let deletedServices: string[] = [];
@@ -545,8 +646,8 @@ export class IpcService {
     // phpMyAdmin migration handler
     ipcMain.handle('migrate-phpmyadmin', async () => {
       try {
-        const oldPath = 'C:/sonna/www/phpmyadmin';
-        const newPath = 'C:/sonna/applications/phpmyadmin';
+        const oldPath = `${SonnaPaths.WWW_PATH}/phpmyadmin`;
+        const newPath = ServicePaths.PHPMYADMIN_PATH;
         
         // Check if old phpMyAdmin exists and new location doesn't
         if (fs.existsSync(oldPath) && !fs.existsSync(newPath)) {
@@ -585,8 +686,8 @@ export class IpcService {
     // Check if phpMyAdmin migration is needed
     ipcMain.handle('check-phpmyadmin-migration', async () => {
       try {
-        const oldPath = 'C:/sonna/www/phpmyadmin';
-        const newPath = 'C:/sonna/applications/phpmyadmin';
+        const oldPath = `${SonnaPaths.WWW_PATH}/phpmyadmin`;
+        const newPath = ServicePaths.PHPMYADMIN_PATH;
         
         const needsMigration = fs.existsSync(oldPath) && !fs.existsSync(newPath);
         return { needsMigration };
@@ -703,6 +804,99 @@ export class IpcService {
       }
     });
 
+    // Fix PHP configurations to suppress deprecation warnings
+    ipcMain.handle('fix-php-warnings', async () => {
+      try {
+        console.log('🐘 Fixing PHP configurations to suppress deprecation warnings...');
+        
+        const phpPaths = PHP_VERSIONS.map(version => ServicePaths.getPhpPath(version));
+
+        let fixedCount = 0;
+        const results = [];
+
+        for (const phpPath of phpPaths) {
+          if (fs.existsSync(phpPath)) {
+            const phpIniPath = ServicePaths.getPhpConfig(path.basename(phpPath));
+            
+            if (fs.existsSync(phpIniPath)) {
+              try {
+                let phpIni = fs.readFileSync(phpIniPath, 'utf8');
+                const originalIni = phpIni;
+                
+                // AGGRESSIVE deprecation warning suppression
+                // Remove any existing error_reporting lines
+                phpIni = phpIni.replace(/^error_reporting\s*=.*$/gm, '');
+                
+                // Check if our Sonna configuration already exists
+                if (!phpIni.includes('Sonna - ULTRA-AGGRESSIVE PHP 8.x deprecation warning suppression')) {
+                  // Add ULTRA-AGGRESSIVE deprecation suppression
+                  phpIni += '\n\n; Sonna - ULTRA-AGGRESSIVE PHP 8.x deprecation warning suppression\n';
+                  phpIni += 'error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT & ~E_NOTICE & ~E_WARNING\n';
+                  phpIni += 'display_errors = Off\n';
+                  phpIni += 'display_startup_errors = Off\n';
+                  phpIni += 'log_errors = On\n';
+                  phpIni += 'log_errors_max_len = 0\n';
+                  phpIni += 'ignore_repeated_errors = On\n';
+                  phpIni += 'ignore_repeated_source = On\n';
+                  phpIni += 'html_errors = Off\n';
+                  phpIni += 'xmlrpc_errors = Off\n';
+                  phpIni += 'output_buffering = 4096\n';
+                  phpIni += 'implicit_flush = Off\n';
+                  phpIni += 'auto_prepend_file = "C:/sonna/conf/php/sonna-suppression.php"\n';
+                }
+                
+                if (phpIni !== originalIni) {
+                  fs.writeFileSync(phpIniPath, phpIni, 'utf8');
+                  results.push(`✅ Fixed ${path.basename(phpPath)}`);
+                  fixedCount++;
+                } else {
+                  results.push(`ℹ️ ${path.basename(phpPath)} already correct`);
+                }
+              } catch (error) {
+                results.push(`❌ Failed to fix ${path.basename(phpPath)}: ${error instanceof Error ? error.message : String(error)}`);
+              }
+            }
+          }
+        }
+        
+        // Create global suppression script
+        try {
+          await this.createGlobalSuppressionScript();
+          results.push('✅ Global PHP suppression script created');
+        } catch (error) {
+          results.push(`⚠️ Global suppression script failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+
+        // Also inject error suppression into phpMyAdmin if available
+        try {
+          const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+          const templateManager = new ConfigTemplateManager();
+          await templateManager.injectPhpMyAdminErrorSuppression();
+          results.push('✅ phpMyAdmin error suppression updated');
+        } catch (error) {
+          results.push(`⚠️ phpMyAdmin suppression failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+
+        const message = fixedCount > 0 
+          ? `Fixed ${fixedCount} PHP configuration(s) and updated phpMyAdmin. Please restart Apache to apply changes.`
+          : 'All PHP configurations are already correct. phpMyAdmin error suppression updated.';
+        
+        return { 
+          success: true, 
+          fixedCount,
+          results,
+          message 
+        };
+      } catch (error) {
+        console.error('Failed to fix PHP configurations:', error);
+        return { 
+          success: false, 
+          fixedCount: 0,
+          message: `Failed to fix PHP configs: ${error instanceof Error ? error.message : String(error)}` 
+        };
+      }
+    });
+
     // Auto-update configs when PHP is installed
     ipcMain.handle('php-installed-update-configs', async () => {
       try {
@@ -710,6 +904,10 @@ export class IpcService {
         
         const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
         const templateManager = new ConfigTemplateManager();
+        
+        // Auto-configure PHP with error suppression
+        const phpConfigResult = await templateManager.autoConfigurePHPWhenAvailable();
+        console.log(`Auto-PHP configuration result:`, phpConfigResult);
         
         // Regenerate Apache config with PHP support
         const apacheResult = await templateManager.regenerateApacheConfigWithPHP();
@@ -719,10 +917,12 @@ export class IpcService {
         
         return { 
           success: true, 
-          phpDetected: apacheResult.phpDetected,
-          message: apacheResult.phpDetected 
-            ? 'Web server configurations updated with PHP support'
-            : 'Web server configurations updated (PHP still not detected)'
+          phpDetected: apacheResult.phpDetected && phpConfigResult.phpDetected,
+          message: phpConfigResult.phpDetected && apacheResult.phpDetected
+            ? 'Web server configurations updated with PHP support and error suppression'
+            : apacheResult.phpDetected 
+              ? 'Web server configurations updated with PHP support'
+              : 'Web server configurations updated (PHP still not detected)'
         };
       } catch (error) {
         console.error('Failed to update configs after PHP installation:', error);
@@ -891,7 +1091,7 @@ export class IpcService {
         message: `Starting ${service.displayName} installation...`
       });
 
-      const downloadPath = path.join('C:/sonna/downloads', `${serviceName}.zip`);
+      const downloadPath = path.join(SonnaPaths.DOWNLOADS_PATH, `${serviceName}.zip`);
       const extractPath = service.extractPath;
 
       // Create directories
@@ -936,6 +1136,26 @@ export class IpcService {
         if (fs.existsSync('C:/sonna/applications/apache')) {
           console.log('🌐 Force Apache configuration update...');
           await this.serviceConfigurator.updateApacheConfiguration();
+        }
+      }
+
+      // Handle PHP installation - trigger auto-configuration with error suppression
+      if (serviceName.startsWith('php-')) {
+        console.log(`🐘 ${serviceName} installed - triggering PHP auto-configuration...`);
+        
+        try {
+          const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+          const templateManager = new ConfigTemplateManager();
+          const phpConfigResult = await templateManager.autoConfigurePHPWhenAvailable();
+          
+          console.log(`PHP auto-configuration result:`, phpConfigResult);
+          
+          // Also update Apache configuration if available
+          if (fs.existsSync('C:/sonna/applications/apache')) {
+            await this.serviceConfigurator.updateApacheConfiguration();
+          }
+        } catch (error) {
+          console.error('Failed to auto-configure PHP:', error);
         }
       }
 
@@ -1292,21 +1512,16 @@ export class IpcService {
       const actions: string[] = [];
       
       // Check Apache installation
-      const apacheInstalled = fs.existsSync('C:/sonna/applications/apache');
-      const apacheConfigExists = fs.existsSync('C:/sonna/applications/apache/Apache24/conf/httpd.conf');
+      const apacheInstalled = fs.existsSync(ServicePaths.APACHE_PATH);
+      const apacheConfigExists = fs.existsSync(ServicePaths.APACHE_CONFIG);
       
       // Check PHP installation
-      const phpPaths = [
-        'C:/sonna/applications/php/8.4',
-        'C:/sonna/applications/php/8.3',
-        'C:/sonna/applications/php/8.2',
-        'C:/sonna/applications/php/8.1',
-      ];
+      const phpPaths = PHP_VERSIONS.map(version => ServicePaths.getPhpPath(version));
       const phpPath = phpPaths.find(p => fs.existsSync(p));
       const phpInstalled = !!phpPath;
       
       // Check phpMyAdmin installation
-      const phpMyAdminInstalled = fs.existsSync('C:/sonna/applications/phpmyadmin');
+      const phpMyAdminInstalled = fs.existsSync(ServicePaths.PHPMYADMIN_PATH);
       
       console.log(`📊 Installation Status:`);
       console.log(`   Apache: ${apacheInstalled ? '✅' : '❌'}`);
@@ -1342,14 +1557,8 @@ export class IpcService {
         console.log('🐘 PHP + Apache detected - ensuring integration...');
         
         try {
-          // Remove requirement page if it exists
-          const requirementPagePath = 'C:/sonna/applications/phpmyadmin/index.html';
-          if (fs.existsSync(requirementPagePath)) {
-            fs.unlinkSync(requirementPagePath);
-            actions.push('Removed PHP requirement page');
-          }
-          
           // Regenerate Apache config with PHP support
+          // Note: Apache configurator will automatically handle requirement page removal
           await this.serviceConfigurator.updateApacheConfiguration();
           actions.push('Apache reconfigured with PHP support');
           
@@ -1411,28 +1620,29 @@ export class IpcService {
       if (serviceName.startsWith('php-')) {
         console.log('🐘 PHP installed - integrating with Apache...');
         
+        // Auto-configure PHP with error suppression
+        const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+        const templateManager = new ConfigTemplateManager();
+        const phpConfigResult = await templateManager.autoConfigurePHPWhenAvailable();
+        
+        console.log(`PHP auto-configuration result:`, phpConfigResult);
+        
         // Check if Apache is installed
-        const apacheExists = fs.existsSync('C:/sonna/applications/apache');
+        const apacheExists = fs.existsSync(ServicePaths.APACHE_PATH);
         
         if (apacheExists) {
           // Reconfigure Apache with PHP support
+          // Note: Apache configurator will automatically handle requirement page removal
           await this.serviceConfigurator.updateApacheConfiguration();
-          
-          // Remove requirement page if it exists
-          const requirementPagePath = 'C:/sonna/applications/phpmyadmin/index.html';
-          if (fs.existsSync(requirementPagePath)) {
-            fs.unlinkSync(requirementPagePath);
-            console.log('🗑️ Removed PHP requirement page');
-          }
           
           return {
             success: true,
-            message: 'PHP integrated with Apache successfully'
+            message: `PHP integrated with Apache successfully ${phpConfigResult.phpDetected ? '(with error suppression)' : ''}`
           };
         } else {
           return {
             success: true,
-            message: 'PHP installed (Apache not available for integration)'
+            message: `PHP installed ${phpConfigResult.phpDetected ? '(with error suppression)' : ''} (Apache not available for integration)`
           };
         }
       }
@@ -1450,9 +1660,19 @@ export class IpcService {
           await this.serviceConfigurator.updateApacheConfiguration();
           
           // Check if PHP is available to determine requirement page creation
-          const phpExists = ['8.4', '8.3', '8.2', '8.1'].some(v => 
-            fs.existsSync(`C:/sonna/applications/php/${v}`)
+          const phpExists = PHP_VERSIONS.slice(0, 4).some(v => 
+            fs.existsSync(ServicePaths.getPhpPath(v))
           );
+          
+          // Inject error suppression for PHP 8.x compatibility
+          try {
+            const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+            const templateManager = new ConfigTemplateManager();
+            await templateManager.injectPhpMyAdminErrorSuppression();
+            console.log('✅ phpMyAdmin error suppression injected');
+          } catch (error) {
+            console.log('⚠️ Failed to inject phpMyAdmin error suppression:', error);
+          }
           
           if (!phpExists) {
             console.log('⚠️ PHP not available - requirement page should be created');
@@ -1462,7 +1682,7 @@ export class IpcService {
           
           return {
             success: true,
-            message: `phpMyAdmin configured with Apache ${phpExists ? '(PHP ready)' : '(PHP required)'}`
+            message: `phpMyAdmin configured with Apache ${phpExists ? '(PHP ready with error suppression)' : '(PHP required)'}`
           };
         } else {
           return {
@@ -1484,6 +1704,138 @@ export class IpcService {
         success: false,
         message: `Configuration failed: ${error instanceof Error ? error.message : String(error)}`
       };
+    }
+  }
+
+  /**
+   * Create global PHP suppression script
+   */
+  private async createGlobalSuppressionScript(): Promise<void> {
+    try {
+      const suppressionPath = 'C:/sonna/conf/php/sonna-suppression.php';
+      const suppressionDir = path.dirname(suppressionPath);
+      
+      // Ensure directory exists
+      if (!fs.existsSync(suppressionDir)) {
+        fs.mkdirSync(suppressionDir, { recursive: true });
+      }
+      
+      // Create ultra-aggressive suppression script
+      const suppressionContent = `<?php
+/**
+ * Sonna Global PHP Error Suppression
+ * Auto-prepended to ALL PHP scripts for maximum compatibility
+ * ULTRA-AGGRESSIVE suppression of PHP 8.x deprecation warnings
+ */
+
+// Start output buffering immediately to catch ANY output
+if (!ob_get_level()) {
+    ob_start();
+}
+
+// SILENCE ALL PHP errors at the most fundamental level
+error_reporting(0);
+
+// Disable ALL error display mechanisms
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+ini_set('html_errors', '0');
+ini_set('xmlrpc_errors', '0');
+
+// Enable logging but suppress output
+ini_set('log_errors', '1');
+ini_set('ignore_repeated_errors', '1');
+ini_set('ignore_repeated_source', '1');
+
+// NUCLEAR OPTION: Replace default error handler completely
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    // SUPPRESS EVERYTHING - no output at all
+    return true;
+}, E_ALL);
+
+// NUCLEAR OPTION: Replace exception handler
+set_exception_handler(function($exception) {
+    // Log but don't output
+    error_log('Suppressed exception: ' . $exception->getMessage());
+    return true;
+});
+
+// NUCLEAR OPTION: Register shutdown function to handle fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE])) {
+        // Log but don't output
+        error_log('Suppressed fatal error: ' . $error['message']);
+    }
+    
+    // Clean any output buffer content that might contain warnings
+    while (ob_get_level()) {
+        $content = ob_get_clean();
+        // Filter out deprecation warnings from output
+        $content = preg_replace('/<br \\/>\\s*<b>Deprecated<\\/b>:.*?<br \\/>/is', '', $content);
+        $content = preg_replace('/Deprecated:.*?\\n/is', '', $content);
+        echo $content;
+    }
+});
+
+// Additional safety: Override error constants to prevent issues
+if (!defined('E_DEPRECATED')) define('E_DEPRECATED', 0);
+if (!defined('E_STRICT')) define('E_STRICT', 0);
+if (!defined('E_NOTICE')) define('E_NOTICE', 0);
+if (!defined('E_WARNING')) define('E_WARNING', 0);
+?>`;
+      
+      fs.writeFileSync(suppressionPath, suppressionContent, 'utf8');
+      console.log('✅ Created global PHP suppression script at:', suppressionPath);
+    } catch (error) {
+      console.error('Failed to create global suppression script:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update service paths in config when base path changes
+   */
+  private updateServicePathsInConfig(config: any, newBasePath: string): void {
+    // Update paths for regular services
+    const services = config.services;
+    
+    if (services.apache) {
+      services.apache.extractPath = `${newBasePath}/applications/apache`;
+    }
+    
+    if (services.nginx) {
+      services.nginx.extractPath = `${newBasePath}/applications/nginx`;
+    }
+    
+    if (services.mysql) {
+      services.mysql.extractPath = `${newBasePath}/applications/mysql`;
+    }
+    
+    if (services.redis) {
+      services.redis.extractPath = `${newBasePath}/applications/redis`;
+    }
+    
+    if (services.mongodb) {
+      services.mongodb.extractPath = `${newBasePath}/applications/mongodb`;
+    }
+    
+    if (services.phpmyadmin) {
+      services.phpmyadmin.extractPath = `${newBasePath}/applications/phpmyadmin`;
+    }
+    
+    // Update paths for PHP versions
+    if (services.php?.versions) {
+      for (const version in services.php.versions) {
+        services.php.versions[version].extractPath = `${newBasePath}/applications/php/${version}`;
+      }
+    }
+    
+    // Update paths for Node.js versions
+    if (services.nodejs?.versions) {
+      for (const version in services.nodejs.versions) {
+        services.nodejs.versions[version].extractPath = `${newBasePath}/applications/nodejs/${version}`;
+      }
     }
   }
 } 

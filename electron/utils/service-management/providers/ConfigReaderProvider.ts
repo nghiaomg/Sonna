@@ -1,12 +1,13 @@
 import * as fs from 'fs';
 import { IConfigReader } from '../interfaces';
 import { ConfigManager } from '../../config-manager';
+import { SonnaPaths } from '../../constants';
 
 export class ConfigReaderProvider implements IConfigReader {
   private configPath: string;
   private configManager: ConfigManager;
 
-  constructor(configPath: string = 'C:/sonna/config.json') {
+  constructor(configPath: string = SonnaPaths.CONFIG_FILE) {
     this.configPath = configPath;
     this.configManager = new ConfigManager();
   }
@@ -14,7 +15,7 @@ export class ConfigReaderProvider implements IConfigReader {
   async getConfig(): Promise<any> {
     try {
       const result = await this.configManager.getConfig();
-
+      
       if (result.success) {
         return result.config;
       } else {
@@ -52,7 +53,7 @@ export class ConfigReaderProvider implements IConfigReader {
 
       // If file exists but is corrupted, try to read it directly
       try {
-        return JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
+      return JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
       } catch (parseError) {
         console.error('Failed to parse config file:', parseError);
         throw new Error('Config file exists but is corrupted');
@@ -63,7 +64,7 @@ export class ConfigReaderProvider implements IConfigReader {
   async saveConfig(config: any): Promise<void> {
     try {
       const result = await this.configManager.saveConfig(config);
-
+      
       if (!result.success) {
         throw new Error(result.message || 'Failed to save config');
       }
@@ -76,7 +77,7 @@ export class ConfigReaderProvider implements IConfigReader {
         if (!fs.existsSync(configDir)) {
           fs.mkdirSync(configDir, { recursive: true });
         }
-        fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
+      fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
         console.log('Config saved using fallback method');
       } catch (fallbackError) {
         console.error('Fallback save also failed:', fallbackError);

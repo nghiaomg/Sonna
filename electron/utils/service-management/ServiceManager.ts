@@ -12,6 +12,7 @@ import { ProcessServiceRunner } from './runners';
 import { ServiceStatusProvider } from './services';
 import { ServiceCheckerFactory } from './factories';
 import { FileSystemProvider, ConfigReaderProvider } from './providers';
+import { SonnaPaths } from '../constants';
 
 /**
  * Main service manager following SOLID principles
@@ -26,7 +27,7 @@ export class ServiceManager {
   private checkerFactory: ServiceCheckerFactory;
   private fileSystem: IFileSystem;
 
-  constructor(configPath: string = 'C:/sonna/config.json') {
+  constructor(configPath: string = SonnaPaths.CONFIG_FILE) {
     // Dependency injection setup
     this.fileSystem = new FileSystemProvider();
     this.configReader = new ConfigReaderProvider(configPath);

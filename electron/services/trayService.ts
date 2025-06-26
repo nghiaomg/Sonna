@@ -8,10 +8,15 @@ export class TrayService {
   private serviceManager: ServiceManager;
   private mainWindow: Electron.BrowserWindow | null = null;
   private isDev: boolean;
+  private windowService: any = null;
 
   constructor(serviceManager: ServiceManager, isDev: boolean) {
     this.serviceManager = serviceManager;
     this.isDev = isDev;
+  }
+
+  setWindowService(windowService: any) {
+    this.windowService = windowService;
   }
 
   setMainWindow(window: Electron.BrowserWindow) {
@@ -189,7 +194,19 @@ export class TrayService {
         { type: 'separator' },
         {
           label: 'Thoát',
-          click: () => {
+          click: async () => {
+            // Set quitting flag to allow proper shutdown
+            if (this.windowService && typeof this.windowService.setIsQuitting === 'function') {
+              this.windowService.setIsQuitting(true);
+            }
+            
+            // Force cleanup and quit
+            try {
+              await this.serviceManager.cleanup();
+            } catch (error) {
+              console.error('Error during cleanup:', error);
+            }
+            
             app.quit();
           }
         }
@@ -217,7 +234,19 @@ export class TrayService {
         },
         {
           label: 'Thoát',
-          click: () => {
+          click: async () => {
+            // Set quitting flag to allow proper shutdown
+            if (this.windowService && typeof this.windowService.setIsQuitting === 'function') {
+              this.windowService.setIsQuitting(true);
+            }
+            
+            // Force cleanup and quit
+            try {
+              await this.serviceManager.cleanup();
+            } catch (error) {
+              console.error('Error during cleanup:', error);
+            }
+            
             app.quit();
           }
         }

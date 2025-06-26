@@ -35,17 +35,17 @@ export class ApacheConfigurator extends BaseWebServerConfigurator {
     }
 
     try {
-      // Initialize config directory
-      await this.templateManager.initialize();
+    // Initialize config directory
+    await this.templateManager.initialize();
 
       // Get configuration variables with auto PHP detection
-      const variables = await this.getConfigVariables(apacheRoot);
+    const variables = await this.getConfigVariables(apacheRoot);
 
-      // Generate new config from template
-      const generatedConfigPath = await this.templateManager.generateApacheConfig(variables);
+    // Generate new config from template
+    const generatedConfigPath = await this.templateManager.generateApacheConfig(variables);
 
-      // Copy generated config to Apache directory
-      fs.copyFileSync(generatedConfigPath, httpdConfPath);
+    // Copy generated config to Apache directory
+    fs.copyFileSync(generatedConfigPath, httpdConfPath);
 
       console.log(`✅ Apache configuration updated: ${generatedConfigPath} -> ${httpdConfPath}`);
       
@@ -77,8 +77,12 @@ export class ApacheConfigurator extends BaseWebServerConfigurator {
         if (phpMyAdminPath) {
           const requirementPagePath = path.join(phpMyAdminPath, 'index.html');
           
-          if (variables.PHP_MODULE_CONFIG.includes('# PHP not configured')) {
-            console.log('⚠️ PHP not available - ensuring requirement page exists...');
+          // Use the same PHP config detection as used for generating the config
+          const phpConfig = await this.getInstalledPHPInfo();
+          
+          if (!phpConfig || phpConfig.incomplete) {
+            const phpStatus = !phpConfig ? 'not available' : 'incomplete (missing Apache DLL)';
+            console.log(`⚠️ PHP ${phpStatus} - ensuring requirement page exists...`);
             
             // Force create requirement page when PHP is not available
             try {
@@ -106,10 +110,13 @@ export class ApacheConfigurator extends BaseWebServerConfigurator {
             }
             
           } else {
-            // PHP is available - remove requirement page if exists
+            // PHP is available and complete - remove requirement page if exists
+            console.log(`🐘 PHP detected (${this.extractPHPVersion(phpConfig.phpPath) || 'unknown'}) - removing requirement page`);
             if (fs.existsSync(requirementPagePath)) {
               fs.unlinkSync(requirementPagePath);
               console.log('🗑️ Removed PHP requirement page - PHP is now available');
+            } else {
+              console.log('✅ No requirement page to remove - PHP is configured correctly');
             }
           }
         }
@@ -127,7 +134,7 @@ export class ApacheConfigurator extends BaseWebServerConfigurator {
   private async getConfigVariables(apacheRoot: string): Promise<any> {
     const port = await this.getPortFromConfig('apache', 80);
     
-    // Get PHP configuration if available
+    // Get PHP configuration if available (using base class method)
     const phpConfig = await this.getInstalledPHPInfo();
     let phpModuleConfig = '# PHP not configured';
     
@@ -136,6 +143,14 @@ export class ApacheConfigurator extends BaseWebServerConfigurator {
       const phpVersion = this.extractPHPVersion(phpConfig.phpPath) || '8.0';
       const phpConfigResult = await this.templateManager.generatePHPConfig(phpConfig.phpPath, phpVersion);
       phpModuleConfig = phpConfigResult.apacheModule;
+      
+      if (phpConfig.incomplete) {
+        console.log(`⚠️ PHP module configuration generated with warnings for version ${phpVersion} at ${phpConfig.phpPath} (incomplete installation)`);
+      } else {
+        console.log(`🐘 PHP module configuration generated for version ${phpVersion} at ${phpConfig.phpPath}`);
+      }
+    } else {
+      console.log('⚠️ PHP not detected by config-based method');
     }
 
     // Get phpMyAdmin configuration if available
@@ -143,7 +158,17 @@ export class ApacheConfigurator extends BaseWebServerConfigurator {
     let phpMyAdminConfig = '# phpMyAdmin not configured';
     
     if (phpMyAdminPath) {
-      const phpMyAdminConfigResult = await this.templateManager.generatePhpMyAdminConfig(phpMyAdminPath);
+      // IMPORTANT: Pass PHP availability info to template manager to ensure consistency
+      // This ensures both PHP module config and phpMyAdmin config use same PHP detection result
+      const phpMyAdminConfigResult = await this.templateManager.generatePhpMyAdminConfigWithPHPInfo(
+        phpMyAdminPath, 
+        phpConfig ? {
+          available: !phpConfig.incomplete, // Only consider as available if complete
+          path: phpConfig.phpPath,
+          version: this.extractPHPVersion(phpConfig.phpPath) || '8.0',
+          dllName: phpConfig.phpDllName
+        } : { available: false }
+      );
       phpMyAdminConfig = phpMyAdminConfigResult.apache;
     }
 

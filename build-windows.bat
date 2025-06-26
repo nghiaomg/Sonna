@@ -78,8 +78,8 @@ echo ===================================================
 echo        Build completed successfully!
 echo ===================================================
 echo.
-echo Installer location: release\Sonna-0.0.1-x64.exe
-echo Portable version: release\Sonna-Portable-0.0.1.exe
+echo Installer location: release\Sonna-1.3.1-x64.exe
+echo Portable version: release\Sonna-Portable-1.3.1.exe
 echo.
 echo NOTE: If icons are not displaying correctly in Windows,
 echo       you may need to clear the Windows icon cache:

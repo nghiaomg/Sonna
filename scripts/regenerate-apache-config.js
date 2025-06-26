@@ -8,13 +8,132 @@
 const fs = require('fs');
 const path = require('path');
 
+// Simplified constants for script environment
+const SONNA_BASE = 'C:/sonna';
+const APPLICATIONS_PATH = `${SONNA_BASE}/applications`;
+const PHP_VERSIONS = ['8.4', '8.3', '8.2', '8.1', '8.0', '7.4'];
+
+const getPhpPath = (version) => `${APPLICATIONS_PATH}/php/${version}`;
+const getPhpConfig = (version) => `${getPhpPath(version)}/php.ini`;
+
+// Function to fix PHP configuration to suppress deprecation warnings
+function fixPHPConfiguration() {
+  console.log('🐘 Checking and fixing PHP configurations...');
+  
+  const phpPaths = PHP_VERSIONS.map(version => getPhpPath(version));
+
+  let fixedCount = 0;
+
+  for (const phpPath of phpPaths) {
+    if (fs.existsSync(phpPath)) {
+      const version = path.basename(phpPath);
+      const phpIniPath = getPhpConfig(version);
+      
+      if (fs.existsSync(phpIniPath)) {
+        try {
+          let phpIni = fs.readFileSync(phpIniPath, 'utf8');
+          let modified = false;
+          
+          // Fix error_reporting to exclude deprecation warnings
+          const originalIni = phpIni;
+          phpIni = phpIni.replace(/error_reporting\s*=\s*E_ALL\s*$/gm, 'error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT');
+          phpIni = phpIni.replace(/error_reporting\s*=\s*E_ALL\s*&\s*~E_DEPRECATED\s*&\s*~E_STRICT\s*$/gm, 'error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT');
+          
+          if (phpIni !== originalIni) {
+            fs.writeFileSync(phpIniPath, phpIni, 'utf8');
+            console.log(`✅ Fixed PHP configuration: ${phpIniPath}`);
+            fixedCount++;
+            modified = true;
+          } else {
+            console.log(`ℹ️ PHP configuration already correct: ${phpIniPath}`);
+          }
+        } catch (error) {
+          console.error(`❌ Failed to fix PHP config at ${phpIniPath}:`, error.message);
+        }
+      }
+    }
+  }
+  
+  if (fixedCount > 0) {
+    console.log(`✅ Fixed ${fixedCount} PHP configuration(s) to suppress deprecation warnings`);
+    console.log('🔄 Please restart Apache for changes to take effect');
+  } else {
+    console.log('ℹ️ No PHP configurations needed fixing');
+  }
+}
+
 function regenerateApacheConfig() {
   console.log('🔧 Regenerating Apache Configuration');
   console.log('=====================================');
   
   // Check if phpMyAdmin is installed
-  const phpMyAdminPath = 'C:/sonna/applications/phpmyadmin';
+  const phpMyAdminPath = `${APPLICATIONS_PATH}/phpmyadmin`;
   const hasPhpMyAdmin = fs.existsSync(phpMyAdminPath);
+  
+  // Enhanced PHP detection with multiple fallbacks
+  function detectPHP() {
+    console.log('🔍 Running enhanced PHP detection...');
+    
+    // First try: Direct version paths
+    const phpPaths = PHP_VERSIONS.map(version => getPhpPath(version));
+
+    for (const phpPath of phpPaths) {
+      if (fs.existsSync(phpPath)) {
+        const phpExe = path.join(phpPath, 'php.exe');
+        const dllNames = ['php8apache2_4.dll', 'php7apache2_4.dll'];
+
+        for (const dllName of dllNames) {
+          const dllPath = path.join(phpPath, dllName);
+          if (fs.existsSync(phpExe) && fs.existsSync(dllPath)) {
+            const version = path.basename(phpPath);
+            console.log(`✅ PHP ${version} detected at: ${phpPath} (${dllName})`);
+            return {
+              available: true,
+              path: phpPath,
+              version: version,
+              dllName: dllName
+            };
+          }
+        }
+      }
+    }
+
+    // Second try: Scan all subdirectories
+    const phpBaseDir = `${APPLICATIONS_PATH}/php`;
+    if (fs.existsSync(phpBaseDir)) {
+      console.log('🔍 Scanning PHP subdirectories...');
+      const phpDirs = fs.readdirSync(phpBaseDir, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
+
+      for (const phpDirName of phpDirs) {
+        const phpPath = getPhpPath(phpDirName);
+        const phpExe = path.join(phpPath, 'php.exe');
+
+        if (fs.existsSync(phpExe)) {
+          const dllNames = ['php8apache2_4.dll', 'php7apache2_4.dll'];
+
+          for (const dllName of dllNames) {
+            const dllPath = path.join(phpPath, dllName);
+            if (fs.existsSync(dllPath)) {
+              console.log(`✅ PHP ${phpDirName} detected at: ${phpPath} (${dllName})`);
+              return {
+                available: true,
+                path: phpPath,
+                version: phpDirName,
+                dllName: dllName
+              };
+            }
+          }
+        }
+      }
+    }
+
+    console.log('⚠️ No PHP installation found');
+    return { available: false };
+  }
+  
+  const phpConfig = detectPHP();
   
   let phpMyAdminConfig = '# phpMyAdmin not configured';
   
@@ -126,7 +245,7 @@ ServerTokens Prod
 ServerSignature Off`;
 
   try {
-    const apacheConfigPath = 'C:/sonna/applications/apache/Apache24/conf/httpd.conf';
+    const apacheConfigPath = `${APPLICATIONS_PATH}/apache/Apache24/conf/httpd.conf`;
     const apacheConfigDir = path.dirname(apacheConfigPath);
     
     // Create directory if it doesn't exist
@@ -151,6 +270,10 @@ ServerSignature Off`;
     
     console.log('');
     console.log('🎉 Apache configuration fix completed!');
+    
+    // Also fix PHP configurations to suppress deprecation warnings
+    fixPHPConfiguration();
+    
     console.log('');
     console.log('Next steps:');
     console.log('1. Restart Sonna application');

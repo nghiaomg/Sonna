@@ -61,6 +61,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Web server configuration
   updateWebServerConfigs: () => ipcRenderer.invoke('update-webserver-configs'),
   regenerateApacheConfig: () => ipcRenderer.invoke('regenerate-apache-config'),
+  fixPhpWarnings: () => ipcRenderer.invoke('fix-php-warnings'),
   
   // Config directory management
   initializeConfigDirectory: () => ipcRenderer.invoke('initialize-config-directory'),
@@ -119,6 +120,7 @@ declare global {
       migratePhpMyAdmin: () => Promise<{ success: boolean; message: string }>;
       updateWebServerConfigs: () => Promise<{ success: boolean; message: string }>;
       regenerateApacheConfig: () => Promise<{ success: boolean; message: string; phpDetected: boolean }>;
+      fixPhpWarnings: () => Promise<{ success: boolean; message: string; fixedCount: number }>;
       initializeConfigDirectory: () => Promise<{ success: boolean; message: string }>;
       autoConfigureServices: () => Promise<{ success: boolean; message: string; actions: string[] }>;
       triggerPostInstallationConfig: (serviceName: string) => Promise<{ success: boolean; message: string }>;

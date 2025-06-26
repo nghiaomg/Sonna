@@ -24,6 +24,8 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
   const [configUpdateResult, setConfigUpdateResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isRegeneratingApache, setIsRegeneratingApache] = useState(false);
   const [apacheRegenResult, setApacheRegenResult] = useState<{ success: boolean; message: string; phpDetected?: boolean } | null>(null);
+  const [isFixingPHPWarnings, setIsFixingPHPWarnings] = useState(false);
+  const [phpWarningsResult, setPHPWarningsResult] = useState<{ success: boolean; message: string; fixedCount?: number } | null>(null);
 
   // Load current installation path
   useEffect(() => {
@@ -144,6 +146,39 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
     }
   };
 
+  // Handle PHP warnings fix
+  const handleFixPHPWarnings = async () => {
+    setIsFixingPHPWarnings(true);
+    setPHPWarningsResult(null);
+
+    try {
+      if (window.electronAPI) {
+        const api = window.electronAPI as any;
+        if (api.fixPhpWarnings) {
+          const result = await api.fixPhpWarnings();
+          setPHPWarningsResult(result);
+
+          if (result.success) {
+            console.log('PHP warnings fixed:', result.message);
+          } else {
+            console.error('PHP warnings fix failed:', result.message);
+          }
+        } else {
+          throw new Error('fixPhpWarnings method not available');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fix PHP warnings:', error);
+      setPHPWarningsResult({
+        success: false,
+        message: `Failed to fix PHP warnings: ${error}`,
+        fixedCount: 0
+      });
+    } finally {
+      setIsFixingPHPWarnings(false);
+    }
+  };
+
   const languageOptions = [
     { value: 'en', label: t.english || 'English', flag: '🇺🇸' },
     { value: 'vi', label: t.vietnamese || 'Tiếng Việt', flag: '🇻🇳' },
@@ -172,40 +207,56 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
               Update Apache and Nginx configurations to fix phpMyAdmin routing issues.
               Use this if phpMyAdmin returns 404 errors after migration.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Button
                 onClick={handleUpdateWebServerConfigs}
                 disabled={isUpdatingConfigs}
-                className="flex-1"
               >
                 {isUpdatingConfigs ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Updating Configurations...
+                    Updating...
                   </>
                 ) : (
                   <>
                     <Server className="w-4 h-4 mr-2" />
-                    Update Web Server Configs
+                    Update Configs
                   </>
                 )}
               </Button>
-              
+
               <Button
                 onClick={handleRegenerateApacheConfig}
                 disabled={isRegeneratingApache}
                 variant="outline"
-                className="flex-1"
               >
                 {isRegeneratingApache ? (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Regenerating Apache...
+                    Regenerating...
                   </>
                 ) : (
                   <>
                     <Database className="w-4 h-4 mr-2" />
-                    Regenerate Apache + PHP
+                    Apache + PHP
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={handleFixPHPWarnings}
+                disabled={isFixingPHPWarnings}
+                variant="outline"
+              >
+                {isFixingPHPWarnings ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Fixing...
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Fix PHP Warnings
                   </>
                 )}
               </Button>
@@ -213,8 +264,8 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
 
             {configUpdateResult && (
               <div className={`mt-3 p-3 rounded-md ${configUpdateResult.success
-                  ? 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200'
-                  : 'bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200'
+                ? 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200'
+                : 'bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200'
                 }`}>
                 <div className="flex items-center">
                   {configUpdateResult.success ? (
@@ -232,8 +283,8 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
 
             {apacheRegenResult && (
               <div className={`mt-3 p-3 rounded-md ${apacheRegenResult.success
-                  ? 'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200'
-                  : 'bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200'
+                ? 'bg-blue-50 border border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200'
+                : 'bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200'
                 }`}>
                 <div className="flex items-center">
                   {apacheRegenResult.success ? (
@@ -242,8 +293,8 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
                     <AlertTriangle className="w-4 h-4 mr-2" />
                   )}
                   <span className="text-sm font-medium">
-                    {apacheRegenResult.success ? 
-                      (apacheRegenResult.phpDetected ? '🐘 PHP Detected' : '⚠️ PHP Required') : 
+                    {apacheRegenResult.success ?
+                      (apacheRegenResult.phpDetected ? '🐘 PHP Detected' : '⚠️ PHP Required') :
                       'Error'}
                   </span>
                 </div>
@@ -251,6 +302,34 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
                 {apacheRegenResult.success && !apacheRegenResult.phpDetected && (
                   <p className="text-sm mt-1 italic">
                     Install PHP through Sonna to enable phpMyAdmin functionality
+                  </p>
+                )}
+              </div>
+            )}
+
+            {phpWarningsResult && (
+              <div className={`mt-3 p-3 rounded-md ${phpWarningsResult.success
+                ? 'bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200'
+                : 'bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200'
+                }`}>
+                <div className="flex items-center">
+                  {phpWarningsResult.success ? (
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {phpWarningsResult.success ?
+                      (phpWarningsResult.fixedCount && phpWarningsResult.fixedCount > 0 ?
+                        `🐘 Fixed ${phpWarningsResult.fixedCount} PHP config(s)` :
+                        '✅ All PHP configs OK') :
+                      'Error'}
+                  </span>
+                </div>
+                <p className="text-sm mt-1">{phpWarningsResult.message}</p>
+                {phpWarningsResult.success && phpWarningsResult.fixedCount && phpWarningsResult.fixedCount > 0 && (
+                  <p className="text-sm mt-1 italic">
+                    Restart Apache to apply changes and suppress deprecation warnings
                   </p>
                 )}
               </div>
@@ -311,8 +390,8 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
 
           {pathUpdateMessage.text && (
             <div className={`p-3 rounded ${pathUpdateMessage.type === 'success'
-                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
               }`}>
               {pathUpdateMessage.text}
             </div>

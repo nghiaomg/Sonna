@@ -116,6 +116,22 @@ export class ConfigManager {
     }
   }
 
+  async saveConfigToPath(config: SonnaConfig, filePath: string): Promise<{ success: boolean; message: string }> {
+    try {
+      // Ensure directory exists
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      fs.writeFileSync(filePath, JSON.stringify(config, null, 2));
+      return { success: true, message: `Config saved to ${filePath}` };
+    } catch (error) {
+      console.error('Failed to save config to path:', error);
+      return { success: false, message: `Failed to save config: ${error}` };
+    }
+  }
+
   async updateConfig(updates: Partial<SonnaConfig>): Promise<{ success: boolean; message: string }> {
     try {
       const currentConfig = await this.getConfig();
@@ -200,7 +216,7 @@ export class ConfigManager {
               name: "php",
               displayName: "PHP 8.4",
               version: "8.4.8",
-              downloadUrl: "https://windows.php.net/downloads/releases/php-8.4.8-nts-Win32-vs17-x64.zip",
+              downloadUrl: "https://windows.php.net/downloads/releases/php-8.4.8-Win32-vs17-x64.zip",
               extractPath: path.join(applicationsPath, 'php/8.4'),
               executable: "php.exe",
               configFile: "php.ini",
@@ -223,7 +239,7 @@ export class ConfigManager {
               name: "php",
               displayName: "PHP 8.2",
               version: "8.2.15",
-              downloadUrl: "https://windows.php.net/downloads/releases/php-8.2.28-nts-Win32-vs16-x64.zip",
+              downloadUrl: "https://windows.php.net/downloads/releases/php-8.2.28-Win32-vs16-x64.zip",
               extractPath: path.join(applicationsPath, 'php/8.2.15'),
               executable: "php.exe",
               configFile: "php.ini",
@@ -234,7 +250,7 @@ export class ConfigManager {
               name: "php",
               displayName: "PHP 7.4",
               version: "7.4",
-              downloadUrl: "https://windows.php.net/downloads/releases/latest/php-7.4-nts-Win32-vc15-x64-latest.zip",
+              downloadUrl: "https://windows.php.net/downloads/releases/latest/php-7.4-Win32-vc15-x64-latest.zip",
               extractPath: path.join(applicationsPath, 'php/7.4'),
               executable: "php.exe",
               configFile: "php.ini",

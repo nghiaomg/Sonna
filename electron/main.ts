@@ -3,10 +3,13 @@ import { ServiceManager } from './utils/service-manager';
 import { DownloadManager } from './utils/download-manager';
 import { ServiceConfigurator } from './utils/service-configurator';
 import { ConfigManager } from './utils/config-manager';
+import { PathInitializer } from './utils/path-initializer';
+import { ServicePaths, PHP_VERSIONS } from './utils/constants';
 import { AssetService, WindowService, TrayService, IpcService } from './services';
 
 const isDev = process.env.NODE_ENV === 'development';
 
+const pathInitializer = new PathInitializer();
 const serviceManager = new ServiceManager();
 const configManager = new ConfigManager();
 const serviceConfigurator = new ServiceConfigurator();
@@ -55,20 +58,23 @@ app.whenReady().then(async () => {
   
   // Initialize Sonna configuration before starting any services
   try {
-    console.log('Initializing Sonna configuration...');
+    console.log('🔧 Initializing Sonna paths...');
+    await pathInitializer.initializeFromConfig();
+    
+    console.log('⚙️ Initializing Sonna configuration...');
     const initResult = await configManager.initialize();
     if (initResult.success) {
-      console.log('Sonna configuration initialized successfully');
+      console.log('✅ Sonna configuration initialized successfully');
       
       // Auto-configure services based on current installation status
       console.log('🔄 Running auto-configuration for existing services...');
       try {
         // Check if Apache and PHP are installed and configure accordingly
-        const apacheExists = require('fs').existsSync('C:/sonna/applications/apache');
-        const phpExists = ['8.4', '8.3', '8.2', '8.1'].some(v => 
-          require('fs').existsSync(`C:/sonna/applications/php/${v}`)
+        const apacheExists = require('fs').existsSync(ServicePaths.APACHE_PATH);
+        const phpExists = PHP_VERSIONS.slice(0, 4).some(v => 
+          require('fs').existsSync(ServicePaths.getPhpPath(v))
         );
-        const phpMyAdminExists = require('fs').existsSync('C:/sonna/applications/phpmyadmin');
+        const phpMyAdminExists = require('fs').existsSync(ServicePaths.PHPMYADMIN_PATH);
         
                  if (apacheExists || phpExists || phpMyAdminExists) {
            console.log(`📊 Detected services - Apache: ${apacheExists ? '✅' : '❌'}, PHP: ${phpExists ? '✅' : '❌'}, phpMyAdmin: ${phpMyAdminExists ? '✅' : '❌'}`);
@@ -113,6 +119,7 @@ app.whenReady().then(async () => {
   const mainWindow = windowService.createWindow();
   
   trayService.setMainWindow(mainWindow);
+  trayService.setWindowService(windowService);
   
   trayService.createTray();
   
