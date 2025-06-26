@@ -56,12 +56,61 @@ if (!extension_loaded('mysqli')) {
     }
 }
 
+// Connection test function to debug MySQL connectivity
+function testMySQLConnection() {
+    $host = '127.0.0.1';
+    $port = ${mysqlPort};
+    $user = 'root';
+    $password = '';
+    
+    try {
+        $connection = @new mysqli($host, $user, $password, '', $port);
+        
+        if ($connection->connect_error) {
+            echo '<div style="background:#ffebee;color:#c62828;padding:15px;margin:10px;border-radius:5px;">';
+            echo '<h3>🔴 MySQL Connection Failed</h3>';
+            echo '<p><strong>Error:</strong> ' . htmlspecialchars($connection->connect_error) . '</p>';
+            echo '<p><strong>Host:</strong> ' . $host . ':' . $port . '</p>';
+            echo '<p><strong>User:</strong> ' . $user . '</p>';
+            echo '<p><strong>Password:</strong> ' . (empty($password) ? 'Empty (correct for Sonna)' : 'Set') . '</p>';
+            echo '<h4>Solutions:</h4>';
+            echo '<ul>';
+            echo '<li>Make sure MySQL service is <strong>running</strong> in Sonna</li>';
+            echo '<li>Check if MySQL is properly installed via Sonna</li>';
+            echo '<li>Verify port ' . $port . ' is not blocked by firewall</li>';
+            echo '<li>Try restarting MySQL service in Sonna</li>';
+            echo '</ul>';
+            echo '</div>';
+            return false;
+        } else {
+            echo '<div style="background:#e8f5e8;color:#2e7d32;padding:15px;margin:10px;border-radius:5px;">';
+            echo '<h3>✅ MySQL Connection Successful</h3>';
+            echo '<p>Connected to MySQL server successfully!</p>';
+            echo '<p><strong>Server Version:</strong> ' . $connection->server_info . '</p>';
+            echo '</div>';
+            $connection->close();
+            return true;
+        }
+    } catch (Exception $e) {
+        echo '<div style="background:#ffebee;color:#c62828;padding:15px;margin:10px;border-radius:5px;">';
+        echo '<h3>🔴 MySQL Connection Exception</h3>';
+        echo '<p><strong>Error:</strong> ' . htmlspecialchars($e->getMessage()) . '</p>';
+        echo '</div>';
+        return false;
+    }
+}
+
+// Test connection on config load (only if accessing via web)
+if (isset($_SERVER['HTTP_HOST']) && $_SERVER['REQUEST_URI'] === '/phpmyadmin/index.php') {
+    testMySQLConnection();
+}
+
 // Servers configuration
 $i = 0;
 
 // Server 1 (MySQL)
 $i++;
-$cfg['Servers'][$i]['verbose'] = 'MySQL';
+$cfg['Servers'][$i]['verbose'] = 'MySQL Local Server';
 $cfg['Servers'][$i]['host'] = '127.0.0.1';
 $cfg['Servers'][$i]['port'] = ${mysqlPort};
 $cfg['Servers'][$i]['socket'] = '';

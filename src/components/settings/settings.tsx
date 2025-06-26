@@ -7,6 +7,7 @@ import { useLanguage } from '@/lib/language-context';
 import type { Language } from '@/lib/language-context';
 import { PathSettingsDialog } from '@/components/settings/path-settings-dialog';
 import { SearchableSelect } from '@/components/ui/select';
+import { PhpDiagnosticDialog } from '@/components/management';
 
 interface SettingsProps {
   darkMode: boolean;
@@ -206,8 +207,10 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
             <p className="text-sm text-muted-foreground mb-3">
               Update Apache and Nginx configurations to fix phpMyAdmin routing issues.
               Use this if phpMyAdmin returns 404 errors after migration.
+              <br />
+              <strong>🔧 Fix PHP Issue</strong>: If phpMyAdmin shows "PHP Required" even with PHP installed, use the diagnostic tool to auto-fix Apache-PHP integration.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <Button
                 onClick={handleUpdateWebServerConfigs}
                 disabled={isUpdatingConfigs}
@@ -260,6 +263,8 @@ export function Settings({ darkMode, onToggleDarkMode }: SettingsProps) {
                   </>
                 )}
               </Button>
+
+              <PhpDiagnosticDialog />
             </div>
 
             {configUpdateResult && (

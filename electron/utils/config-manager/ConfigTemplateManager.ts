@@ -47,7 +47,7 @@ export class ConfigTemplateManager {
     // If none found, use first available path as fallback
     const fallbackPath = possiblePaths[0] || 'electron/utils/config-templates';
     console.warn(`Templates directory not found in any expected location, using fallback: ${fallbackPath}`);
-    
+
     // Ensure the directory exists
     if (!fs.existsSync(fallbackPath)) {
       console.warn(`Fallback path doesn't exist, creating: ${fallbackPath}`);
@@ -57,7 +57,7 @@ export class ConfigTemplateManager {
         console.error('Failed to create fallback templates directory:', error);
       }
     }
-    
+
     return fallbackPath;
   }
 
@@ -118,7 +118,7 @@ export class ConfigTemplateManager {
 
     const outputPath = ConfigPaths.APACHE_CONFIG_OUTPUT;
     fs.writeFileSync(outputPath, config, 'utf8');
-    
+
     console.log(`Apache config generated: ${outputPath}`);
     return outputPath;
   }
@@ -137,7 +137,7 @@ export class ConfigTemplateManager {
 
     const outputPath = ConfigPaths.NGINX_CONFIG_OUTPUT;
     fs.writeFileSync(outputPath, config, 'utf8');
-    
+
     console.log(`Nginx config generated: ${outputPath}`);
     return outputPath;
   }
@@ -157,7 +157,7 @@ export class ConfigTemplateManager {
 
     const outputPath = ConfigPaths.MYSQL_CONFIG_OUTPUT;
     fs.writeFileSync(outputPath, config, 'utf8');
-    
+
     console.log(`MySQL config generated: ${outputPath}`);
     return outputPath;
   }
@@ -176,7 +176,7 @@ export class ConfigTemplateManager {
 
     const outputPath = ConfigPaths.REDIS_CONFIG_OUTPUT;
     fs.writeFileSync(outputPath, config, 'utf8');
-    
+
     console.log(`Redis config generated: ${outputPath}`);
     return outputPath;
   }
@@ -188,37 +188,78 @@ export class ConfigTemplateManager {
     apacheModule: string;
     nginxFastCGI: string;
   }> {
-    const phpDllName = this.getPHPDllName(phpVersion);
-    const dllPath = path.join(phpPath, phpDllName);
-    const dllExists = fs.existsSync(dllPath);
-    
+    console.log(`🔍 Generating PHP ${phpVersion} configuration at: ${phpPath}`);
+
+    // First try ServicePaths method which has better DLL detection
+    const smartDllPath = ServicePaths.getPhpDll(phpVersion);
+    let dllExists = fs.existsSync(smartDllPath);
+    let actualDllPath = smartDllPath;
+    let dllName = path.basename(smartDllPath);
+
+    // Fallback to old method if smart detection fails
+    if (!dllExists) {
+      const fallbackDllName = this.getPHPDllName(phpVersion);
+      const fallbackDllPath = path.join(phpPath, fallbackDllName);
+      dllExists = fs.existsSync(fallbackDllPath);
+
+      if (dllExists) {
+        actualDllPath = fallbackDllPath;
+        dllName = fallbackDllName;
+        console.log(`📦 Using fallback DLL detection: ${dllName}`);
+      }
+    }
+
+    console.log(`🔍 PHP DLL Detection Results:`);
+    console.log(`   - Expected DLL: ${dllName}`);
+    console.log(`   - DLL Path: ${actualDllPath}`);
+    console.log(`   - DLL Exists: ${dllExists ? '✅ YES' : '❌ NO'}`);
+
+    if (!dllExists) {
+      // List all DLL files in PHP directory for troubleshooting
+      try {
+        const phpFiles = fs.readdirSync(phpPath);
+        const dllFiles = phpFiles.filter(file => file.endsWith('.dll'));
+        console.log(`   - Available DLLs: ${dllFiles.length > 0 ? dllFiles.join(', ') : 'None found'}`);
+      } catch (error) {
+        console.log(`   - Error listing PHP directory: ${error}`);
+      }
+    }
+
     // Create error suppression PHP.ini configuration
     await this.createPHPIniWithErrorSuppression(phpPath);
-    
+
     let apacheModule;
-    
+
     if (dllExists) {
       apacheModule = `
 # PHP ${phpVersion} Configuration
-LoadModule php_module "${phpPath.replace(/\\/g, '/')}/${phpDllName}"
+LoadModule php_module "${actualDllPath.replace(/\\/g, '/')}"
 AddType application/x-httpd-php .php
 PHPIniDir "${phpPath.replace(/\\/g, '/')}/"
 
 # Set index.php as directory index
 DirectoryIndex index.html index.htm index.php`;
+      
+      console.log(`✅ PHP Apache module configuration generated successfully`);
+      console.log(`   - LoadModule: ${dllName}`);
+      console.log(`   - PHPIniDir: ${phpPath}`);
     } else {
       apacheModule = `
 # PHP ${phpVersion} Configuration (INCOMPLETE INSTALLATION)
-# WARNING: Apache DLL file not found: ${phpDllName}
+# WARNING: Apache DLL file not found: ${dllName}
 # PHP files will be served as plain text until DLL is available.
 # Consider reinstalling PHP with complete package.
 #
-# LoadModule php_module "${phpPath.replace(/\\/g, '/')}/${phpDllName}"
+# LoadModule php_module "${actualDllPath.replace(/\\/g, '/')}"
 # AddType application/x-httpd-php .php
 # PHPIniDir "${phpPath.replace(/\\/g, '/')}/"
 
 # Set index.php as directory index (will show as text without PHP module)
 DirectoryIndex index.html index.htm index.php`;
+      
+      console.log(`⚠️ PHP Apache module configuration generated with warnings`);
+      console.log(`   - Missing DLL: ${dllName}`);
+      console.log(`   - PHP files will be served as plain text`);
     }
 
     const nginxFastCGI = `
@@ -246,13 +287,13 @@ location ~ \\.php$ {
       // Copy global suppression script to PHP directory
       const suppressionTemplatePath = path.join(this.templatesDir, 'sonna-global-suppression.php');
       const suppressionFilePath = path.join(phpPath, 'sonna-error-suppression.php');
-      
+
       if (fs.existsSync(suppressionTemplatePath)) {
         fs.copyFileSync(suppressionTemplatePath, suppressionFilePath);
         console.log(`✅ Error suppression script copied to: ${suppressionFilePath}`);
       } else {
         console.log('⚠️ Error suppression template not found, creating basic one');
-        
+
         // Create basic error suppression if template doesn't exist
         const basicSuppression = `<?php
 // Sonna Basic Error Suppression
@@ -266,7 +307,7 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 ?>`;
         fs.writeFileSync(suppressionFilePath, basicSuppression, 'utf8');
       }
-      
+
       // Create custom PHP.ini with auto_prepend_file
       const customPhpIni = `; Sonna Custom PHP Configuration
 ; Auto-prepend error suppression for maximum compatibility
@@ -332,14 +373,14 @@ disable_functions = exec,passthru,shell_exec,system,proc_open,popen
 
       const phpIniPath = path.join(phpPath, 'php.ini');
       fs.writeFileSync(phpIniPath, customPhpIni, 'utf8');
-      
+
       console.log(`✅ Custom PHP.ini created at: ${phpIniPath}`);
       console.log(`   - Extension directory: ${phpPath.replace(/\\/g, '/')}/ext`);
       console.log(`   - mysqli extension: ENABLED`);
       console.log(`   - Error suppression: ENABLED (auto_prepend_file)`);
       console.log(`   - Error reporting: DISABLED`);
       console.log(`   - All PHP warnings/deprecations: SUPPRESSED`);
-      
+
       // Verify extension files exist
       const extDir = path.join(phpPath, 'ext');
       if (fs.existsSync(extDir)) {
@@ -350,7 +391,7 @@ disable_functions = exec,passthru,shell_exec,system,proc_open,popen
       } else {
         console.warn(`   ⚠️ Extension directory not found: ${extDir}`);
       }
-      
+
     } catch (error) {
       console.error('Failed to create PHP.ini with error suppression:', error);
       throw error;
@@ -361,7 +402,7 @@ disable_functions = exec,passthru,shell_exec,system,proc_open,popen
    * Generate phpMyAdmin configuration snippets with provided PHP info (for consistency)
    */
   async generatePhpMyAdminConfigWithPHPInfo(
-    phpMyAdminPath: string, 
+    phpMyAdminPath: string,
     phpInfo: { available: boolean; path?: string; version?: string; dllName?: string }
   ): Promise<{
     apache: string;
@@ -538,14 +579,21 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
     dllName?: string;
   }> {
     try {
-      // First try: Use current installation pattern that scan all PHP directories
-      const phpPaths = PHP_VERSIONS.map(version => ServicePaths.getPhpPath(version));
-
-      for (const phpPath of phpPaths) {
+      console.log('🔍 Starting comprehensive PHP detection...');
+      
+              const phpVersionsToCheck = ['8.4.8', '8.4', '8.3.0', '8.3', '8.2', '8.1', '8.0', '7.4'];
+      
+      for (const version of phpVersionsToCheck) {
+        const phpPath = ServicePaths.getPhpPath(version);
+        
         if (fs.existsSync(phpPath)) {
-          const version = path.basename(phpPath);
+          console.log(`📁 Checking PHP ${version} at: ${phpPath}`);
+          
           const phpExe = ServicePaths.getPhpExecutable(version);
           const dllPath = ServicePaths.getPhpDll(version);
+          
+          console.log(`   - PHP executable: ${phpExe} (${fs.existsSync(phpExe) ? 'EXISTS' : 'MISSING'})`);
+          console.log(`   - Apache DLL: ${dllPath} (${fs.existsSync(dllPath) ? 'EXISTS' : 'MISSING'})`);
 
           if (fs.existsSync(phpExe) && fs.existsSync(dllPath)) {
             const dllName = path.basename(dllPath);
@@ -556,6 +604,31 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
               version: version,
               dllName: dllName
             };
+          } else if (fs.existsSync(phpExe)) {
+            // Try to find alternative DLL files
+            try {
+              const files = fs.readdirSync(phpPath);
+              const apacheDlls = files.filter(file => 
+                file.endsWith('.dll') && 
+                file.toLowerCase().includes('apache')
+              );
+              
+              if (apacheDlls.length > 0) {
+                const foundDll = apacheDlls[0];
+                const foundDllPath = path.join(phpPath, foundDll);
+                console.log(`✅ PHP ${version} detected with alternative DLL: ${foundDll}`);
+                return {
+                  available: true,
+                  path: phpPath,
+                  version: version,
+                  dllName: foundDll
+                };
+              } else {
+                console.log(`⚠️ PHP ${version} found but no Apache DLL available`);
+              }
+            } catch (error) {
+              console.log(`❌ Error scanning PHP ${version} directory: ${error}`);
+            }
           }
         }
       }
@@ -625,12 +698,12 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
    */
   private replaceVariables(template: string, variables: ConfigTemplateVariables): string {
     let result = template;
-    
+
     for (const [key, value] of Object.entries(variables)) {
       const placeholder = `{{${key}}}`;
       result = result.replace(new RegExp(placeholder, 'g'), String(value));
     }
-    
+
     return result;
   }
 
@@ -643,23 +716,41 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
   }
 
   /**
-   * Auto-regenerate Apache config when PHP status changes
+   * Force regenerate Apache configuration with detailed PHP detection
    */
-  async regenerateApacheConfigWithPHP(): Promise<{
+  async forceRegenerateApacheConfig(): Promise<{
     success: boolean;
     phpDetected: boolean;
     configPath?: string;
     message: string;
+    phpDllFound?: boolean;
+    phpDllPath?: string;
   }> {
     try {
-      console.log('🔄 Auto-regenerating Apache configuration with PHP detection...');
+      console.log('🔄 FORCE regenerating Apache configuration...');
       
-      // Detect current PHP installation
+      // Detect current PHP installation with detailed logging
       const phpConfig = await this.detectPHPConfiguration();
+      let phpDllFound = false;
+      let phpDllPath = '';
+      
+      if (phpConfig.available) {
+        // Verify DLL exists using ServicePaths
+        const { ServicePaths } = require('../constants/paths');
+        const version = phpConfig.version || '8.4';
+        const expectedDllPath = ServicePaths.getPhpDll(version);
+        phpDllFound = require('fs').existsSync(expectedDllPath);
+        phpDllPath = expectedDllPath;
+        
+        console.log(`🔍 PHP DLL Verification:`);
+        console.log(`   - Version: ${version}`);
+        console.log(`   - Expected DLL: ${expectedDllPath}`);
+        console.log(`   - DLL Found: ${phpDllFound ? '✅ YES' : '❌ NO'}`);
+      }
       
       // Get phpMyAdmin path (if available)
       const phpMyAdminPath = ServicePaths.PHPMYADMIN_PATH;
-      const hasPhpMyAdmin = fs.existsSync(path.join(phpMyAdminPath, 'index.php'));
+      const hasPhpMyAdmin = require('fs').existsSync(require('path').join(phpMyAdminPath, 'index.php'));
       
       let phpModuleConfig = '# PHP not configured';
       let phpMyAdminConfig = '# phpMyAdmin not configured';
@@ -667,7 +758,7 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
       if (phpConfig.available) {
         console.log(`✅ PHP detected: ${phpConfig.version} at ${phpConfig.path}`);
         
-        // Generate PHP module configuration
+        // Generate PHP module configuration with detailed logging
         const phpConfigResult = await this.generatePHPConfig(phpConfig.path!, phpConfig.version!);
         phpModuleConfig = phpConfigResult.apacheModule;
         
@@ -695,16 +786,92 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
       });
       
       const message = phpConfig.available 
-        ? `Apache configuration updated with PHP ${phpConfig.version} support`
+        ? `Apache configuration updated with PHP ${phpConfig.version} support${phpDllFound ? ' (DLL found)' : ' (DLL MISSING)'}`
         : 'Apache configuration updated without PHP (requirement page active)';
       
+      return {
+        success: true,
+        phpDetected: phpConfig.available,
+        phpDllFound,
+        phpDllPath,
+        configPath,
+        message
+      };
+      
+    } catch (error) {
+      console.error('Failed to force regenerate Apache config:', error);
+      return {
+        success: false,
+        phpDetected: false,
+        phpDllFound: false,
+        message: `Failed to regenerate Apache config: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * Auto-regenerate Apache config when PHP status changes
+   */
+  async regenerateApacheConfigWithPHP(): Promise<{
+    success: boolean;
+    phpDetected: boolean;
+    configPath?: string;
+    message: string;
+  }> {
+    try {
+      console.log('🔄 Auto-regenerating Apache configuration with PHP detection...');
+
+      // Detect current PHP installation
+      const phpConfig = await this.detectPHPConfiguration();
+
+      // Get phpMyAdmin path (if available)
+      const phpMyAdminPath = ServicePaths.PHPMYADMIN_PATH;
+      const hasPhpMyAdmin = fs.existsSync(path.join(phpMyAdminPath, 'index.php'));
+
+      let phpModuleConfig = '# PHP not configured';
+      let phpMyAdminConfig = '# phpMyAdmin not configured';
+
+      if (phpConfig.available) {
+        console.log(`✅ PHP detected: ${phpConfig.version} at ${phpConfig.path}`);
+
+        // Generate PHP module configuration
+        const phpConfigResult = await this.generatePHPConfig(phpConfig.path!, phpConfig.version!);
+        phpModuleConfig = phpConfigResult.apacheModule;
+
+        // Generate phpMyAdmin configuration with PHP support
+        if (hasPhpMyAdmin) {
+          const phpMyAdminConfigResult = await this.generatePhpMyAdminConfig(phpMyAdminPath);
+          phpMyAdminConfig = phpMyAdminConfigResult.apache;
+        }
+      } else {
+        console.log('⚠️ PHP not detected - generating config without PHP support');
+
+        // Generate phpMyAdmin configuration without PHP (requirement page)
+        if (hasPhpMyAdmin) {
+          const phpMyAdminConfigResult = await this.generatePhpMyAdminConfig(phpMyAdminPath);
+          phpMyAdminConfig = phpMyAdminConfigResult.apache;
+        }
+      }
+
+      // Generate Apache config with proper PHP and phpMyAdmin configuration
+      const configPath = await this.generateApacheConfig({
+        APACHE_ROOT: `${ServicePaths.APACHE_PATH}/Apache24`,
+        APACHE_PORT: 80,
+        PHP_MODULE_CONFIG: phpModuleConfig,
+        PHPMYADMIN_CONFIG: phpMyAdminConfig
+      });
+
+      const message = phpConfig.available
+        ? `Apache configuration updated with PHP ${phpConfig.version} support`
+        : 'Apache configuration updated without PHP (requirement page active)';
+
       return {
         success: true,
         phpDetected: phpConfig.available,
         configPath,
         message
       };
-      
+
     } catch (error) {
       console.error('Failed to regenerate Apache config:', error);
       return {
@@ -721,16 +888,16 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
   async injectPhpMyAdminErrorSuppression(): Promise<void> {
     const phpMyAdminPath = ServicePaths.PHPMYADMIN_PATH;
     const indexPhpPath = path.join(phpMyAdminPath, 'index.php');
-    
+
     if (!fs.existsSync(indexPhpPath)) {
       console.log('⚠️ phpMyAdmin index.php not found, skipping error suppression injection');
       return;
-}
+    }
 
     try {
       // Read existing index.php
       let indexPhpContent = fs.readFileSync(indexPhpPath, 'utf8');
-      
+
       // Check if our suppression is already injected
       if (indexPhpContent.includes('Sonna phpMyAdmin Error Suppression')) {
         console.log('ℹ️ Error suppression already injected in phpMyAdmin');
@@ -739,32 +906,32 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
 
       // Load error suppression template
       const suppressionScript = this.loadTemplate('phpmyadmin-error-suppression.php');
-      
+
       // Find the opening <?php tag and inject right after it
       const phpOpenMatch = indexPhpContent.match(/^<\?php/m);
       if (phpOpenMatch) {
         const insertPosition = phpOpenMatch.index! + phpOpenMatch[0].length;
-        
+
         // Insert suppression script right after opening <?php tag
         const beforePhpOpen = indexPhpContent.substring(0, insertPosition);
         const afterPhpOpen = indexPhpContent.substring(insertPosition);
-        
+
         // Remove the opening <?php from suppression script since we're injecting after existing one
         const suppressionCode = suppressionScript.replace(/^<\?php\s*/, '\n');
-        
+
         indexPhpContent = beforePhpOpen + suppressionCode + afterPhpOpen;
-        
+
         // Write back to file
         fs.writeFileSync(indexPhpPath, indexPhpContent, 'utf8');
-        
+
         console.log('✅ Error suppression injected into phpMyAdmin index.php');
       } else {
         console.log('⚠️ Could not find PHP opening tag in phpMyAdmin index.php');
-        }
+      }
     } catch (error) {
       console.error('Failed to inject error suppression:', error);
       throw error;
-        }
+    }
   }
 
   /**
@@ -772,26 +939,26 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
    */
   async createPHPRequirementPage(): Promise<void> {
     const phpMyAdminPath = ServicePaths.PHPMYADMIN_PATH;
-    
+
     // Check if phpMyAdmin directory exists and has the key files
     const hasPhpMyAdminDir = fs.existsSync(phpMyAdminPath);
     const hasIndexPhp = hasPhpMyAdminDir && fs.existsSync(path.join(phpMyAdminPath, 'index.php'));
     const hasConfigSample = hasPhpMyAdminDir && fs.existsSync(path.join(phpMyAdminPath, 'config.sample.inc.php'));
-    
+
     console.log(`📊 phpMyAdmin detection:`);
     console.log(`   Directory exists: ${hasPhpMyAdminDir ? '✅' : '❌'}`);
-    console.log(`   index.php exists: ${hasIndexPhp ? '✅' : '❌'}`);  
+    console.log(`   index.php exists: ${hasIndexPhp ? '✅' : '❌'}`);
     console.log(`   config.sample.inc.php exists: ${hasConfigSample ? '✅' : '❌'}`);
-    
+
     if (!hasPhpMyAdminDir) {
       console.log('⚠️ phpMyAdmin directory not found, skipping requirement page creation');
       return;
     }
-    
+
     if (!hasIndexPhp && !hasConfigSample) {
       console.log('⚠️ phpMyAdmin installation appears incomplete (missing key files)');
       console.log('📁 Creating requirement page anyway for potential future installation...');
-  }
+    }
 
     try {
       // Load HTML template from external file
@@ -800,22 +967,22 @@ location ~ ^/phpmyadmin/(libraries|setup/lib) {
       // Write requirement page
       const requirementPagePath = path.join(phpMyAdminPath, 'index.html');
       fs.writeFileSync(requirementPagePath, requirementPageContent, 'utf8');
-      
+
       // Create PHP check endpoint
       const phpCheckContent = `<?php
 // PHP availability check endpoint for Sonna
 header('Content-Type: text/plain');
 echo 'PHP_WORKING_VERSION_' . PHP_VERSION;
 ?>`;
-      
+
       const wwwDir = SonnaPaths.WWW_PATH;
       if (!fs.existsSync(wwwDir)) {
         fs.mkdirSync(wwwDir, { recursive: true });
       }
-      
+
       const phpCheckPath = path.join(wwwDir, 'sonna-php-check.php');
       fs.writeFileSync(phpCheckPath, phpCheckContent, 'utf8');
-      
+
       console.log('✅ PHP requirement page created at:', requirementPagePath);
       console.log('✅ PHP check endpoint created at:', phpCheckPath);
     } catch (error) {
@@ -830,7 +997,7 @@ echo 'PHP_WORKING_VERSION_' . PHP_VERSION;
   async backupConfigs(): Promise<string> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupDir = path.join(this.outputDir, 'backups', timestamp);
-    
+
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });
     }
@@ -838,7 +1005,7 @@ echo 'PHP_WORKING_VERSION_' . PHP_VERSION;
     // Copy all config files to backup
     const configFiles = [
       'apache/httpd.conf',
-      'nginx/nginx.conf', 
+      'nginx/nginx.conf',
       'mysql/my.cnf',
       'redis/redis.conf'
     ];
@@ -846,7 +1013,7 @@ echo 'PHP_WORKING_VERSION_' . PHP_VERSION;
     for (const configFile of configFiles) {
       const sourcePath = path.join(this.outputDir, configFile);
       const backupPath = path.join(backupDir, configFile);
-      
+
       if (fs.existsSync(sourcePath)) {
         const backupFileDir = path.dirname(backupPath);
         if (!fs.existsSync(backupFileDir)) {
@@ -870,19 +1037,19 @@ echo 'PHP_WORKING_VERSION_' . PHP_VERSION;
   }> {
     try {
       console.log('🔍 Auto-checking for PHP installation and configuring...');
-      
+
       // Detect PHP
       const phpConfig = await this.detectPHPConfiguration();
-      
+
       if (phpConfig.available && phpConfig.path && phpConfig.version) {
         console.log(`✅ PHP ${phpConfig.version} detected, configuring...`);
-        
+
         // Generate PHP config with error suppression
         await this.generatePHPConfig(phpConfig.path, phpConfig.version);
-        
+
         // Regenerate Apache config with PHP support
         const apacheResult = await this.regenerateApacheConfigWithPHP();
-        
+
         return {
           success: true,
           phpDetected: true,

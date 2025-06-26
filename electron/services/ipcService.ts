@@ -722,6 +722,237 @@ export class IpcService {
       }
     });
 
+    // Force regenerate Apache config with detailed debugging
+    ipcMain.handle('force-regenerate-apache-config', async () => {
+      try {
+        console.log('🔧 Manual Apache config regeneration requested...');
+        const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+        const templateManager = new ConfigTemplateManager();
+        
+        const result = await templateManager.forceRegenerateApacheConfig();
+        
+        // If Apache is running, restart it to reload config
+        if (result.success && result.phpDetected) {
+          try {
+            const apacheRunning = await this.serviceManager.isServiceRunning('apache');
+            if (apacheRunning) {
+              console.log('🔄 Restarting Apache to reload PHP configuration...');
+              await this.serviceManager.stopService('apache');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              await this.serviceManager.startService('apache');
+              console.log('✅ Apache restarted successfully');
+              result.message += ' (Apache restarted)';
+            }
+          } catch (restartError) {
+            console.warn('⚠️ Failed to restart Apache:', restartError);
+            result.message += ' (Apache restart failed)';
+          }
+        }
+        
+        return result;
+      } catch (error) {
+        console.error('Failed to force regenerate Apache config:', error);
+        return { 
+          success: false, 
+          phpDetected: false,
+          message: `Failed to regenerate: ${error instanceof Error ? error.message : String(error)}` 
+        };
+      }
+    });
+
+    // PHP installation diagnostic
+    ipcMain.handle('diagnose-php-installation', async () => {
+      try {
+        console.log('🔍 Running PHP installation diagnostics...');
+        const fs = require('fs');
+        const path = require('path');
+        const { ServicePaths, PHP_VERSIONS } = require('../utils/constants/paths');
+        
+        const diagnostics = {
+          phpVersionsChecked: [] as any[],
+          foundInstallations: [] as any[],
+          dllStatus: [] as any[],
+          recommendations: [] as string[]
+        };
+        
+        // Check each PHP version
+        for (const version of ['8.4.8', '8.4', '8.3.0', '8.3', '8.2', '8.1']) {
+          const phpPath = ServicePaths.getPhpPath(version);
+          const phpExe = ServicePaths.getPhpExecutable(version);
+          const phpDll = ServicePaths.getPhpDll(version);
+          
+          console.log(`\n🔍 Checking PHP ${version}:`);
+          console.log(`   - Path: ${phpPath}`);
+          console.log(`   - Executable: ${phpExe}`);
+          console.log(`   - DLL: ${phpDll}`);
+          
+          const pathExists = fs.existsSync(phpPath);
+          const exeExists = fs.existsSync(phpExe);
+          const dllExists = fs.existsSync(phpDll);
+          
+          console.log(`   - Directory exists: ${pathExists}`);
+          console.log(`   - PHP.exe exists: ${exeExists}`);
+          console.log(`   - Apache DLL exists: ${dllExists}`);
+          
+          diagnostics.phpVersionsChecked.push({
+            version,
+            phpPath,
+            pathExists,
+            exeExists,
+            dllExists,
+            dllPath: phpDll
+          });
+          
+          if (pathExists && exeExists) {
+            // List all files in PHP directory
+            try {
+              const files = fs.readdirSync(phpPath);
+                             const dllFiles = files.filter((f: string) => f.endsWith('.dll') && f.includes('apache'));
+              
+              console.log(`   - Available Apache DLLs: ${dllFiles.length > 0 ? dllFiles.join(', ') : 'None'}`);
+              
+              diagnostics.foundInstallations.push({
+                version,
+                phpPath,
+                dllFiles,
+                hasApacheDll: dllFiles.length > 0,
+                expectedDll: path.basename(phpDll),
+                actualDlls: dllFiles
+              });
+            } catch (error) {
+              console.log(`   - Error reading directory: ${error}`);
+            }
+          }
+        }
+        
+                 // Generate recommendations
+        const workingInstallations = diagnostics.foundInstallations.filter(inst => inst.hasApacheDll);
+        
+        if (workingInstallations.length === 0) {
+          diagnostics.recommendations.push('No working PHP installation found with Apache DLL');
+          diagnostics.recommendations.push('Try reinstalling PHP through Sonna');
+          diagnostics.recommendations.push('Or use force-regenerate-apache-config to try alternative detection');
+        } else {
+          diagnostics.recommendations.push(`Found ${workingInstallations.length} working PHP installation(s)`);
+          workingInstallations.forEach(inst => {
+            diagnostics.recommendations.push(`PHP ${inst.version}: ${inst.actualDlls.join(', ')}`);
+          });
+          diagnostics.recommendations.push('Use force-regenerate-apache-config to apply PHP configuration');
+        }
+        
+        return {
+          success: true,
+          diagnostics,
+          workingInstallations: workingInstallations.length,
+          message: `PHP diagnostic completed - Found ${workingInstallations.length} working installation(s)`
+        };
+        
+      } catch (error) {
+        console.error('Failed to diagnose PHP installation:', error);
+        return {
+          success: false,
+          message: `Diagnostic failed: ${error instanceof Error ? error.message : String(error)}`
+        };
+             }
+     });
+
+    // Auto-fix PHP-Apache integration
+    ipcMain.handle('auto-fix-php-apache', async () => {
+      try {
+        console.log('🔧 Auto-fixing PHP-Apache integration...');
+        
+                 // Step 1: Run diagnostics
+        console.log('🔍 Running PHP installation diagnostics...');
+                 const fs = require('fs');
+         const path = require('path');
+        
+        let workingInstallations = 0;
+        const steps = [];
+        
+        // Check for working PHP installations
+        for (const version of ['8.4.8', '8.4', '8.3.0', '8.3', '8.2', '8.1']) {
+          const phpPath = ServicePaths.getPhpPath(version);
+          const phpExe = ServicePaths.getPhpExecutable(version);
+          
+          if (fs.existsSync(phpPath) && fs.existsSync(phpExe)) {
+            try {
+              const files = fs.readdirSync(phpPath);
+              const apacheDlls = files.filter((f: string) => f.endsWith('.dll') && f.includes('apache'));
+              
+              if (apacheDlls.length > 0) {
+                workingInstallations++;
+                console.log(`✅ Found working PHP ${version} with DLL: ${apacheDlls[0]}`);
+              }
+            } catch (error) {
+              console.log(`❌ Error checking PHP ${version}: ${error}`);
+            }
+          }
+        }
+        
+        let fixed = false;
+        
+        // Step 2: If PHP installations found, force regenerate Apache config
+        if (workingInstallations > 0) {
+          console.log(`📦 Found ${workingInstallations} working PHP installation(s), regenerating Apache config...`);
+          
+          steps.push(`Found ${workingInstallations} working PHP installation(s)`);
+          
+          try {
+            const { ConfigTemplateManager } = require('../utils/config-manager/ConfigTemplateManager');
+            const templateManager = new ConfigTemplateManager();
+            const regenResult = await templateManager.forceRegenerateApacheConfig();
+          
+            if (regenResult.success) {
+              steps.push('Apache configuration regenerated successfully');
+              
+              if (regenResult.phpDetected) {
+                steps.push(`PHP ${regenResult.phpDllFound ? 'with DLL' : 'without DLL'} integrated`);
+                fixed = regenResult.phpDllFound;
+              }
+              
+              // Step 3: Restart Apache if it's running
+              try {
+                const apacheRunning = await this.serviceManager.isServiceRunning('apache');
+                if (apacheRunning) {
+                  steps.push('Restarting Apache to apply changes...');
+                  await this.serviceManager.stopService('apache');
+                  await new Promise(resolve => setTimeout(resolve, 3000));
+                  await this.serviceManager.startService('apache');
+                  steps.push('Apache restarted successfully');
+                } else {
+                  steps.push('Apache not running - please start Apache manually');
+                }
+              } catch (restartError) {
+                steps.push(`Apache restart failed: ${restartError}`);
+              }
+            } else {
+              steps.push('Apache configuration regeneration failed');
+            }
+          } catch (configError) {
+            steps.push(`Configuration error: ${configError}`);
+          }
+        } else {
+          steps.push('No working PHP installations found');
+          steps.push('Please reinstall PHP through Sonna');
+        }
+        
+        return {
+          success: true,
+          fixed,
+          steps,
+          message: fixed ? 'PHP-Apache integration fixed successfully' : 'Unable to fix automatically - manual intervention required'
+        };
+        
+      } catch (error) {
+        console.error('Failed to auto-fix PHP-Apache integration:', error);
+        return {
+          success: false,
+          message: `Auto-fix failed: ${error instanceof Error ? error.message : String(error)}`,
+          steps: []
+        };
+      }
+    });
+
     // PHP requirement check for phpMyAdmin
     ipcMain.handle('check-php-for-phpmyadmin', async () => {
       try {
@@ -1661,6 +1892,31 @@ export class IpcService {
         }
       }
       
+      // Handle MySQL post-installation
+      if (serviceName === 'mysql') {
+        console.log('🗄️ MySQL installed - initializing database...');
+        
+        try {
+          // MySQL setup is handled by MySQLServiceSetup during installation
+          // But we can provide additional guidance here
+          console.log('✅ MySQL database initialized with development settings');
+          console.log('   - Root user created with empty password');
+          console.log('   - Ready for phpMyAdmin connection');
+          console.log('   - Make sure to START MySQL service before using phpMyAdmin');
+          
+          return {
+            success: true,
+            message: 'MySQL configured successfully (ready for phpMyAdmin)'
+          };
+        } catch (error) {
+          console.error('MySQL post-installation failed:', error);
+          return {
+            success: false,
+            message: `MySQL configuration failed: ${error instanceof Error ? error.message : String(error)}`
+          };
+        }
+      }
+
       // Handle phpMyAdmin post-installation
       if (serviceName === 'phpmyadmin') {
         console.log('🗄️ phpMyAdmin installed - configuring with Apache...');

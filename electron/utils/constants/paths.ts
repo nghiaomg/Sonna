@@ -199,9 +199,36 @@ export class ServicePaths {
   }
 
   static getPhpDll(version: string): string {
+    const phpPath = this.getPhpPath(version);
     const majorVersion = version.split('.')[0];
-    const dllName = majorVersion === '7' ? 'php7apache2_4.dll' : 'php8apache2_4.dll';
-    return `${this.getPhpPath(version)}/${dllName}`;
+
+    // Primary DLL name based on major version
+    const primaryDll = majorVersion === '7' ? 'php7apache2_4.dll' : 'php8apache2_4.dll';
+    const primaryPath = `${phpPath}/${primaryDll}`;
+
+    // Check if primary DLL exists
+    try {
+      const fs = require('fs');
+      if (fs.existsSync(primaryPath)) {
+        return primaryPath;
+      }
+
+      // Fallback: scan for any Apache DLL files
+      const dllFiles = fs.readdirSync(phpPath).filter((file: string) =>
+        file.includes('apache') && file.endsWith('.dll')
+      );
+
+      if (dllFiles.length > 0) {
+        console.log(`Found alternative PHP Apache DLL: ${dllFiles[0]}`);
+        return `${phpPath}/${dllFiles[0]}`;
+      }
+
+    } catch (error) {
+      // If directory doesn't exist or other error, fall back to primary
+    }
+
+    // Return primary path even if it doesn't exist (for consistency)
+    return primaryPath;
   }
 
   /**

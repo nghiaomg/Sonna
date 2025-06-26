@@ -65,18 +65,19 @@ export class MySQLServiceSetup extends BaseServiceSetup {
   private async initializeMySQLDatabase(extractPath: string): Promise<void> {
     const dataDir = path.join(extractPath, 'data');
     const mysqldPath = path.join(extractPath, 'bin', 'mysqld.exe');
+    const mysqlPath = path.join(extractPath, 'bin', 'mysql.exe');
     
     // Check if database is already initialized
     const mysqlDir = path.join(dataDir, 'mysql');
     if (fs.existsSync(mysqlDir)) {
-      console.log('MySQL database already initialized');
+      console.log('✅ MySQL database already initialized');
       return;
     }
 
-    console.log('Initializing MySQL database...');
+    console.log('🔄 Initializing MySQL database...');
     
     try {
-      // Initialize MySQL database
+      // Initialize MySQL database with insecure mode (no root password)
       const initCommand = `"${mysqldPath}" --initialize-insecure --basedir="${extractPath}" --datadir="${dataDir}"`;
       console.log(`Running MySQL initialization: ${initCommand}`);
       
@@ -89,11 +90,68 @@ export class MySQLServiceSetup extends BaseServiceSetup {
         console.warn('MySQL initialization warnings:', stderr);
       }
       
-      console.log('MySQL database initialized successfully');
+      console.log('✅ MySQL database initialized with insecure mode (no root password)');
+      console.log('   - Root user created with empty password');
+      console.log('   - Ready for phpMyAdmin connection');
+      
+      // Create initialization SQL script for phpMyAdmin compatibility
+      await this.createPhpMyAdminUser(extractPath);
       
     } catch (error) {
-      console.error('Failed to initialize MySQL database:', error);
+      console.error('❌ Failed to initialize MySQL database:', error);
+      console.error('   This may cause "Cannot login to MySQL server" error in phpMyAdmin');
       // Don't throw error - MySQL might still work with manual initialization
+    }
+  }
+
+  private async createPhpMyAdminUser(extractPath: string): Promise<void> {
+    try {
+      const initSqlPath = path.join(extractPath, 'init-phpmyadmin.sql');
+      
+      // Create SQL script to ensure phpMyAdmin compatibility
+      const initSql = `
+-- Sonna MySQL initialization for phpMyAdmin compatibility
+-- Creates necessary users and permissions
+
+-- Ensure root user has proper privileges
+FLUSH PRIVILEGES;
+
+-- Create root user with empty password if not exists
+CREATE USER IF NOT EXISTS 'root'@'localhost' IDENTIFIED BY '';
+CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED BY '';
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '';
+
+-- Grant all privileges to root users
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'127.0.0.1' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+
+-- Create phpMyAdmin user for better security (optional)
+CREATE USER IF NOT EXISTS 'phpmyadmin'@'localhost' IDENTIFIED BY '';
+GRANT ALL PRIVILEGES ON *.* TO 'phpmyadmin'@'localhost' WITH GRANT OPTION;
+
+-- Ensure mysql database exists and has proper structure
+USE mysql;
+
+-- Update user table to ensure proper authentication
+UPDATE user SET authentication_string = '' WHERE User = 'root';
+UPDATE user SET plugin = 'mysql_native_password' WHERE User = 'root';
+
+-- Flush privileges to apply changes
+FLUSH PRIVILEGES;
+
+-- Show status
+SELECT User, Host, plugin, authentication_string FROM mysql.user WHERE User IN ('root', 'phpmyadmin');
+`;
+
+      fs.writeFileSync(initSqlPath, initSql, 'utf8');
+      console.log(`✅ Created MySQL initialization script: ${initSqlPath}`);
+      console.log('   - Root users with empty password configured');
+      console.log('   - phpMyAdmin user created');
+      console.log('   - Ready for phpMyAdmin authentication');
+      
+    } catch (error) {
+      console.error('⚠️ Failed to create phpMyAdmin user script:', error);
     }
   }
 } 

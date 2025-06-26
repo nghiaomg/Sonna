@@ -19,6 +19,11 @@ collation-server = utf8mb4_unicode_ci
 # Connection Settings
 max_connections = 151
 max_connect_errors = 100000
+bind-address = 127.0.0.1
+
+# Authentication Settings (for phpMyAdmin compatibility)
+default_authentication_plugin = mysql_native_password
+skip-name-resolve
 
 # Buffer Settings (optimized for development)
 innodb_buffer_pool_size = 128M
@@ -37,8 +42,9 @@ log-error = {{MYSQL_DATADIR}}/error.log
 general_log = 0
 slow_query_log = 0
 
-# Security
+# Security (relaxed for development)
 local_infile = 0
+secure_file_priv = ""
 
 # SQL Mode
 sql_mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
