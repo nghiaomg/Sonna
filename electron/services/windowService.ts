@@ -14,19 +14,16 @@ export class WindowService {
   }
 
   createWindow() {
-    // Get icon path before creating window
     const iconPath = this.getIconPath();
     console.log('Using icon path for window:', iconPath);
-    
-    // Set app icon for Windows taskbar
+
     if (process.platform === 'win32') {
       app.setAppUserModelId(process.execPath);
     }
-    
-    // Determine the correct preload script path
+
     const preloadPath = this.getPreloadPath();
     console.log('Using preload path:', preloadPath);
-    
+
     this.mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -48,9 +45,7 @@ export class WindowService {
 
     if (this.isDev) {
       this.mainWindow.loadURL('http://localhost:5173');
-      // this.mainWindow.webContents.openDevTools(); // Dev tools disabled
     } else {
-      // In production, dist-electron and dist are at the same level
       const htmlPath = path.join(__dirname, '../dist/index.html');
       console.log('Loading HTML from:', htmlPath);
       this.mainWindow.loadFile(htmlPath);
@@ -62,27 +57,45 @@ export class WindowService {
 
     return this.mainWindow;
   }
-
-  // Find the correct preload script path
+      
   private getPreloadPath(): string {
-    // Try multiple possible locations for the preload script
-    const possiblePaths = [
-      path.join(__dirname, '../preload.js'),
-      path.join(__dirname, '../../electron/preload.js'),
-      path.join(__dirname, '../../../electron/preload.js'),
-      path.join(process.cwd(), 'electron/preload.js'),
-      path.join(app.getAppPath(), 'electron/preload.js')
-    ];
-    
-    for (const p of possiblePaths) {
-      if (fs.existsSync(p)) {
-        return p;
+    if (this.isDev) {
+      const devPaths = [
+        path.join(__dirname, '../preload.js'),
+        path.join(__dirname, '../../electron/preload.js'),
+        path.join(process.cwd(), 'electron/preload.js'),
+        path.join(process.cwd(), 'dist-electron/preload.js')
+      ];
+
+      for (const p of devPaths) {
+        if (fs.existsSync(p)) {
+          console.log('Found preload.js in development at:', p);
+          return p;
+        }
+      }
+    } else {
+      const prodPaths = [
+        path.join(__dirname, 'preload.js'),
+        path.join(__dirname, '../preload.js'),
+        path.join(app.getAppPath(), 'dist-electron/preload.js'),
+        path.join(process.resourcesPath, 'app.asar.unpacked/dist-electron/preload.js'),
+        path.join(process.resourcesPath, 'app/dist-electron/preload.js')
+      ];
+
+      for (const p of prodPaths) {
+        if (fs.existsSync(p)) {
+          console.log('Found preload.js in production at:', p);
+          return p;
+        }
       }
     }
-    
-    // If no path is found, return the default path and log a warning
-    console.warn('Could not find preload.js, using default path');
-    return path.join(__dirname, '../preload.js');
+
+    console.warn('Could not find preload.js in any expected location');
+    const defaultPath = this.isDev
+      ? path.join(__dirname, '../preload.js')
+      : path.join(__dirname, 'preload.js');
+    console.warn('Using default path:', defaultPath);
+    return defaultPath;
   }
 
   setupWindowEvents(onCloseCallback: () => void) {
@@ -92,8 +105,7 @@ export class WindowService {
       if (!this.isQuitting) {
         event.preventDefault();
         this.mainWindow?.hide();
-        
-        // Call the callback when window is closed to system tray
+
         onCloseCallback();
       }
     });
@@ -148,14 +160,11 @@ export class WindowService {
     if (process.platform === 'win32') {
       const iconPath = this.getIconPath();
       try {
-        // Set app user model ID for Windows - use executable path for proper association
         app.setAppUserModelId(process.execPath);
-        
-        // Set taskbar icon
+
         if (!this.isDev) {
           app.on('ready', () => {
             try {
-              // Force refresh icon cache
               const { execSync } = require('child_process');
               execSync(`ie4uinit.exe -show`);
             } catch (e) {
@@ -163,7 +172,7 @@ export class WindowService {
             }
           });
         }
-        
+
         console.log('App icon set successfully');
       } catch (error) {
         console.error('Failed to set app icon:', error);

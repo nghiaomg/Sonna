@@ -26,16 +26,51 @@ export class PHPServiceSetup extends BaseServiceSetup {
   }
 
   private enablePHPExtensions(phpIni: string): string {
-    const extensions = ['curl', 'mbstring', 'openssl', 'pdo_mysql', 'mysqli', 'gd', 'zip'];
+    // Complete list of extensions needed for phpMyAdmin and general PHP development
+    const extensions = [
+      'curl',
+      'fileinfo', 
+      'gd',
+      'mbstring',
+      'mysqli',
+      'openssl',
+      'pdo_mysql',
+      'zip',
+      'json',
+      'session',
+      'filter',
+      'hash',
+      'ctype',
+      'tokenizer',
+      'xml',
+      'xmlreader',
+      'xmlwriter',
+      'dom',
+      'iconv',
+      'simplexml'
+    ];
     
     extensions.forEach(ext => {
-      phpIni = phpIni.replace(new RegExp(`;extension=${ext}`, 'g'), `extension=${ext}`);
+      // Remove commented lines
+      phpIni = phpIni.replace(new RegExp(`^\\s*;\\s*extension\\s*=\\s*${ext}\\s*$`, 'gm'), '');
+      // Remove uncommented lines to avoid duplicates
+      phpIni = phpIni.replace(new RegExp(`^\\s*extension\\s*=\\s*${ext}\\s*$`, 'gm'), '');
+    });
+    
+    // Add all extensions at the end
+    phpIni += '\n\n; Sonna - Required Extensions for phpMyAdmin and Development\n';
+    extensions.forEach(ext => {
+      phpIni += `extension=${ext}\n`;
     });
     
     return phpIni;
   }
 
   private configurePHPSettings(phpIni: string): string {
+    // Configure extension directory
+    phpIni = phpIni.replace(/;extension_dir\s*=.*/g, 'extension_dir = "ext"');
+    phpIni = phpIni.replace(/extension_dir\s*=.*/g, 'extension_dir = "ext"');
+    
     // Configure timezone
     phpIni = phpIni.replace(/;date.timezone\s*=/g, 'date.timezone = Asia/Ho_Chi_Minh');
     

@@ -65,13 +65,13 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
 
     if (window.electronAPI) {
       const electronAPI = window.electronAPI as any;
-      
+
       const handleDownloadProgress = (event: any, progress: DownloadProgress) => {
         setDownloads(prev => new Map(prev.set(progress.serviceName, progress)));
 
         if (progress.status === 'completed') {
           onServiceInstalled(progress.serviceName);
-          
+
           setTimeout(() => {
             setDownloads(prev => {
               const newMap = new Map(prev);
@@ -97,7 +97,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
       if (electronAPI.onDownloadProgress) {
         electronAPI.onDownloadProgress(handleDownloadProgress);
       }
-      
+
       if (electronAPI.onInstallationQueueStatus) {
         electronAPI.onInstallationQueueStatus(handleQueueStatus);
       }
@@ -144,7 +144,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
         language = 'php';
         displayName = 'PHP';
       } else if (service.name.startsWith('nodejs-')) {
-        language = 'nodejs'; 
+        language = 'nodejs';
         displayName = 'Node.js';
       } else {
         language = service.name;
@@ -163,14 +163,14 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
       }
 
       const group = groups.get(language)!;
-      
+
       if (service.name.startsWith('php-') || service.name.startsWith('nodejs-')) {
         const version = service.name.split('-')[1];
         group.versions.push({
           value: version,
           label: `${displayName} ${version}`,
           description: `Version ${service.version}`,
-          recommended: version === '8.3.0' || version === '20.11.0', 
+          recommended: version === '8.3.0' || version === '20.11.0',
           installed: service.installed
         });
       } else {
@@ -191,13 +191,25 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
     groups.forEach(group => {
       group.hasMultipleVersions = group.versions.length > 1;
       group.versions.sort((a, b) => {
+        // Sort installed versions first
+        if (a.installed && !b.installed) return -1;
+        if (!a.installed && b.installed) return 1;
+        
+        // Then sort by recommended status
         if (a.recommended && !b.recommended) return -1;
         if (!a.recommended && b.recommended) return 1;
+        
+        // Finally sort by version number (descending)
         return b.value.localeCompare(a.value, undefined, { numeric: true });
       });
     });
 
-    return Array.from(groups.values());
+    // Sort groups: installed services first, then by display name
+    return Array.from(groups.values()).sort((a, b) => {
+      if (a.hasInstalled && !b.hasInstalled) return -1;
+      if (!a.hasInstalled && b.hasInstalled) return 1;
+      return a.displayName.localeCompare(b.displayName);
+    });
   }, [services]);
 
   const handleInstallClick = (groupId: string) => {
@@ -205,7 +217,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
     if (!group) return;
 
     const availableVersions = group.versions.filter(v => !v.installed);
-    
+
     if (availableVersions.length === 0) return;
 
     if (group.hasMultipleVersions && availableVersions.length > 1) {
@@ -279,7 +291,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
 
   const getGroupProgress = (group: GroupedService) => {
     for (const version of group.versions) {
-      const serviceName = group.hasMultipleVersions 
+      const serviceName = group.hasMultipleVersions
         ? `${group.language}-${version.value}`
         : group.language;
       const download = downloads.get(serviceName);
@@ -327,7 +339,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                   Installation Queue Status
                 </span>
               </div>
-              
+
               <div className="space-y-2 text-sm">
                 {queueStatus.activeInstallations.length > 0 && (
                   <div className="flex items-center gap-2">
@@ -337,7 +349,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                     </span>
                   </div>
                 )}
-                
+
                 {queueStatus.queueLength > 0 && (
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-3 h-3 text-yellow-600" />

@@ -10,6 +10,9 @@
     "dist/**/*",
     "dist-electron/**/*"
   ],
+  "asarUnpack": [
+    "dist-electron/preload.js"
+  ],
   "extraResources": [
     {
       "from": "public",
@@ -19,6 +22,11 @@
     {
       "from": "build/icons",
       "to": "icons",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "electron/utils/config-templates",
+      "to": "templates",
       "filter": ["**/*"]
     }
   ],
