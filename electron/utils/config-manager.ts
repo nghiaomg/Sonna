@@ -461,41 +461,72 @@ export class ConfigManager {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hello Sonna</title>
     <style>
+        :root {
+            --background: 0 0% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 0 0% 9%;
+            --card-foreground: 0 0% 98%;
+            --border: 0 0% 14.9%;
+            --primary: 221.2 83.2% 53.3%;
+            --muted: 0 0% 63.9%;
+        }
+        
+        * { box-sizing: border-box; }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            height: 100vh;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
         }
+        
         .container {
             text-align: center;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 3rem 2rem;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-            width: 90%;
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            padding: 2.5rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
         }
+        
         h1 {
-            color: #333;
+            color: hsl(var(--foreground));
             font-size: 2.5rem;
             margin-bottom: 1rem;
-            font-weight: 700;
+            font-weight: 600;
         }
+        
         .emoji {
             font-size: 4rem;
             margin-bottom: 1rem;
             display: block;
         }
+        
         p {
-            color: #666;
+            color: hsl(var(--muted));
             font-size: 1.1rem;
             line-height: 1.6;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .version {
+            background: hsl(var(--primary) / 0.1);
+            border: 1px solid hsl(var(--primary) / 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            color: hsl(var(--primary));
+            font-size: 0.95rem;
         }
     </style>
 </head>
@@ -504,7 +535,9 @@ export class ConfigManager {
         <span class="emoji">🚀</span>
         <h1>Hello Sonna!</h1>
         <p>Welcome to your local development environment. Sonna is now running and ready to serve your web projects.</p>
-        <p><strong>Sonna v1.2.3</strong> - Modern Local Development Environment</p>
+        <div class="version">
+            <strong>Sonna v1.4.0</strong> - Enhanced Stability & Performance Optimization
+        </div>
     </div>
 </body>
 </html>`;

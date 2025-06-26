@@ -93,12 +93,12 @@ export function ServiceCard({
   const availableVersions = versions.filter(v => !v.installed);
 
   return (
-    <Card className="group transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 border-2 hover:border-primary/20 hover:-translate-y-1">
-      <CardContent className="p-4">
-        <div className="space-y-4">
+    <Card className="border-2 h-[240px]">
+      <CardContent className="p-4 h-full">
+        <div className="flex flex-col h-full justify-center">
           {/* Header with Icon and Service Info */}
           <div className="flex items-start space-x-3">
-            <div className="p-2.5 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 group-hover:from-primary/10 group-hover:to-primary/5 transition-colors duration-200">
+            <div className="p-2.5 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
               {getServiceIcon(language)}
             </div>
             <div className="flex-1 min-w-0">
@@ -120,106 +120,108 @@ export function ServiceCard({
             </div>
           </div>
 
-          {/* Installation Progress */}
-          {progress && progress.status !== 'completed' && (
-            <div className="space-y-3 p-3 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
-              <div className="flex items-center justify-between">
+          {/* Content Area - Either Progress or Version Lists */}
+          <div className="flex-1 flex flex-col justify-center min-h-0">
+            {progress && progress.status !== 'completed' ? (
+              /* Installation Progress */
+              <div className="space-y-2 p-3 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700">
                 <div className="flex items-center space-x-2">
                   {progress.status === 'error' ? (
                     <AlertCircle className="w-4 h-4 text-red-500" />
                   ) : (
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   )}
-                  <span className={cn("font-medium text-sm", getStatusColor(progress.status))}>
+                  <span className={cn("font-medium text-sm truncate", getStatusColor(progress.status))}>
                     {progress.message}
                   </span>
                 </div>
-                {progress.status === 'downloading' && (
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {progress.progress}%
+                
+                {(progress.status === 'downloading' || progress.status === 'extracting' || progress.status === 'setup') && (
+                  <Progress
+                    value={progress.status === 'downloading' ? progress.progress : 100}
+                    variant={getProgressVariant(progress.status)}
+                    className="h-2"
+                  />
+                )}
+              </div>
+            ) : progress && progress.status === 'completed' ? (
+              /* Success State */
+              <div className="p-3 rounded-lg bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="font-medium text-sm text-green-700 dark:text-green-400 truncate">
+                    {progress.message}
                   </span>
+                </div>
+              </div>
+            ) : (
+              /* Version Information */
+              <div className="space-y-2">
+                {/* Installed Versions */}
+                {hasInstalled && (
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t.installedVersions || 'Installed Versions'}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {installedVersions.slice(0, 4).map(version => (
+                        <Badge 
+                          key={version.value} 
+                          variant="secondary"
+                          className="text-xs bg-green-50 text-green-700 border-green-200"
+                        >
+                          {version.value}
+                          {version.recommended && (
+                            <span className="ml-1 text-[10px] opacity-60">★</span>
+                          )}
+                        </Badge>
+                      ))}
+                      {installedVersions.length > 4 && (
+                        <Badge variant="secondary" className="text-xs text-muted-foreground">
+                          +{installedVersions.length - 4}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Available Versions Preview */}
+                {availableVersions.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t.available || 'Available'}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableVersions.slice(0, 3).map(version => (
+                        <Badge 
+                          key={version.value} 
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {version.value}
+                          {version.recommended && (
+                            <span className="ml-1 text-[10px] text-amber-500">★</span>
+                          )}
+                        </Badge>
+                      ))}
+                      {availableVersions.length > 3 && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
+                          +{availableVersions.length - 3} {t.moreVersions || 'more'}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-              
-              {(progress.status === 'downloading' || progress.status === 'extracting' || progress.status === 'setup') && (
-                <Progress
-                  value={progress.status === 'downloading' ? progress.progress : 100}
-                  variant={getProgressVariant(progress.status)}
-                  className="h-2"
-                />
-              )}
-            </div>
-          )}
-
-          {/* Success State */}
-          {progress && progress.status === 'completed' && (
-            <div className="space-y-3 p-3 rounded-lg bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                <span className="font-medium text-sm text-green-700 dark:text-green-400">
-                  {progress.message}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Installed Versions */}
-          {hasInstalled && (
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t.installedVersions || 'Installed Versions'}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {installedVersions.map(version => (
-                  <Badge 
-                    key={version.value} 
-                    variant="secondary"
-                    className="text-xs bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                  >
-                    {version.value}
-                    {version.recommended && (
-                      <span className="ml-1 text-[10px] opacity-60">★</span>
-                    )}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Available Versions Preview */}
-          {availableVersions.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t.available || 'Available'}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {availableVersions.slice(0, 3).map(version => (
-                  <Badge 
-                    key={version.value} 
-                    variant="outline"
-                    className="text-xs"
-                  >
-                    {version.value}
-                    {version.recommended && (
-                      <span className="ml-1 text-[10px] text-amber-500">★</span>
-                    )}
-                  </Badge>
-                ))}
-                {availableVersions.length > 3 && (
-                  <Badge variant="outline" className="text-xs text-muted-foreground">
-                    +{availableVersions.length - 3} {t.moreVersions || 'more'}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Action Button */}
-          <div className="pt-2">
+          <div className="mt-auto pt-3">
             <Button
               onClick={() => onInstallClick(id)}
               disabled={isDownloading || availableVersions.length === 0}
-              className="w-full transition-all duration-200 hover:scale-105"
+              className="w-full"
               variant={hasInstalled ? "outline" : "default"}
               size="sm"
             >

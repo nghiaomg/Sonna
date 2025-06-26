@@ -2,7 +2,7 @@
   "name": "sonna",
   "productName": "Sonna",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Modern Local Development Environment for Windows",
   "author": "nghiaomg",
   "main": "dist-electron/main.js",

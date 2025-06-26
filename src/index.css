@@ -77,20 +77,38 @@
 
 /* Custom scrollbar for modern look */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-md;
+  @apply bg-border rounded-sm;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-accent;
+  @apply bg-muted-foreground/20;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Scrollbar utilities */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-border::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-sm;
 }
 
 /* Disable text selection on UI elements */

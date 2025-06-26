@@ -245,12 +245,12 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen max-h-screen bg-background flex flex-col overflow-hidden">
       {/* Custom Titlebar */}
       <Titlebar title={`${t.appTitle} - ${t.appSubtitle}`} />
       
       {/* Header */}
-      <header className="border-b bg-card">
+      <header className="border-b bg-card flex-shrink-0">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-4">
             <img src={getLogoPath()} alt="Sonna" className="w-8 h-8" />
@@ -308,8 +308,10 @@ function App() {
       />
 
       {/* Main Content */}
-      <main className="p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <main className="flex-1 overflow-hidden">
+        <div className="h-full p-6">
+          <div className="max-w-6xl mx-auto h-full">
+            <div className="h-full overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
           {activeTab === 'install' && (
             <DownloadManager 
               services={downloadServices}
@@ -348,8 +350,10 @@ function App() {
                 isLoading={projectsLoading}
                 onRefresh={loadProjects}
               />
-          </>
-        )}
+              </>
+            )}
+            </div>
+          </div>
         </div>
       </main>
     </div>

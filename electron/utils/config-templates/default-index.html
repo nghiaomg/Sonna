@@ -5,119 +5,152 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hello Sonna</title>
     <style>
+        :root {
+            --background: 0 0% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 0 0% 9%;
+            --card-foreground: 0 0% 98%;
+            --border: 0 0% 14.9%;
+            --primary: 221.2 83.2% 53.3%;
+            --muted: 0 0% 63.9%;
+            --muted-foreground: 0 0% 45.1%;
+            --accent: 0 0% 14.9%;
+        }
+        
+        * { 
+            box-sizing: border-box; 
+            margin: 0;
+            padding: 0;
+        }
+        
         body {
             font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 1rem;
-            background: hsl(0 0% 3.9%);
-            min-height: 100vh;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: hsl(0 0% 98%);
+            padding: 1rem;
         }
+        
         .container {
             text-align: center;
-            background: hsl(0 0% 9%);
-            border: 1px solid hsl(0 0% 14.9%);
-            padding: 2.5rem 2rem;
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-            max-width: 600px;
+            max-width: 900px;
             width: 100%;
+            max-height: 95vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: hsl(var(--border)) transparent;
+        }
+        
+        .container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .container::-webkit-scrollbar-thumb {
+            background: hsl(var(--border));
+            border-radius: 3px;
         }
         h1 {
-            color: hsl(0 0% 98%);
+            color: hsl(var(--foreground));
             font-size: 2.5rem;
             margin-bottom: 1rem;
             font-weight: 600;
         }
+        
         .emoji {
-            font-size: 4rem;
+            font-size: 3rem;
             margin-bottom: 1rem;
             display: block;
-            animation: bounce 2s infinite;
         }
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
-        }
+        
         p {
-            color: hsl(0 0% 63.9%);
+            color: hsl(var(--muted));
             font-size: 1.1rem;
             line-height: 1.6;
             margin-bottom: 1.5rem;
         }
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
-            margin-top: 2rem;
+            margin: 2rem 0;
+            max-height: 300px;
+            overflow: hidden;
         }
+        
         .feature {
-            background: hsl(0 0% 14.9%);
-            border: 1px solid hsl(0 0% 20%);
-            padding: 1.25rem;
+            background: hsl(var(--accent));
+            border: 1px solid hsl(var(--border));
+            padding: 1rem;
             border-radius: 8px;
-            font-size: 0.95rem;
-            color: hsl(0 0% 95%);
-            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            color: hsl(var(--card-foreground));
             text-align: left;
         }
-        .feature:hover {
-            background: hsl(0 0% 20%);
-            border-color: hsl(221.2 83.2% 53.3%);
-            transform: translateY(-2px);
-        }
+        
         .feature strong {
-            color: hsl(0 0% 98%);
+            color: hsl(var(--foreground));
             display: block;
             margin-bottom: 0.5rem;
-        }
-        .footer {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid hsl(0 0% 20%);
-            color: hsl(0 0% 63.9%);
-            font-size: 0.9rem;
-        }
-        code {
-            background: hsl(0 0% 14.9%);
-            border: 1px solid hsl(0 0% 20%);
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
-            color: hsl(142.1 70.6% 45.3%);
-            font-size: 0.9rem;
-        }
-        .version-info {
-            background: hsl(142.1 70.6% 45.3% / 0.1);
-            border: 1px solid hsl(142.1 70.6% 45.3% / 0.2);
-            border-radius: 8px;
-            padding: 1.25rem;
-            margin-top: 1.5rem;
-            color: hsl(142.1 70.6% 45.3%);
             font-size: 0.95rem;
         }
-        .github-link {
+        .footer {
             margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid hsl(var(--border));
+            color: hsl(var(--muted));
+            font-size: 0.85rem;
         }
+        
+        code {
+            background: hsl(var(--accent));
+            border: 1px solid hsl(var(--border));
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+            color: hsl(var(--primary));
+            font-size: 0.85rem;
+        }
+        
+        .version-info {
+            background: hsl(var(--primary) / 0.1);
+            border: 1px solid hsl(var(--primary) / 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            color: hsl(var(--primary));
+            font-size: 0.9rem;
+        }
+        
+        .github-link {
+            margin-top: 1rem;
+        }
+        
         .github-link a {
-            color: hsl(0 0% 63.9%);
+            color: hsl(var(--muted));
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+            font-size: 0.85rem;
         }
-        .github-link a:hover {
-            color: hsl(0 0% 98%);
-        }
+        
         .github-icon {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
         }
     </style>
 </head>

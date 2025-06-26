@@ -191,20 +191,16 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
     groups.forEach(group => {
       group.hasMultipleVersions = group.versions.length > 1;
       group.versions.sort((a, b) => {
-        // Sort installed versions first
         if (a.installed && !b.installed) return -1;
         if (!a.installed && b.installed) return 1;
-        
-        // Then sort by recommended status
+
         if (a.recommended && !b.recommended) return -1;
         if (!a.recommended && b.recommended) return 1;
-        
-        // Finally sort by version number (descending)
+
         return b.value.localeCompare(a.value, undefined, { numeric: true });
       });
     });
 
-    // Sort groups: installed services first, then by display name
     return Array.from(groups.values()).sort((a, b) => {
       if (a.hasInstalled && !b.hasInstalled) return -1;
       if (!a.hasInstalled && b.hasInstalled) return 1;
@@ -372,7 +368,7 @@ export function DownloadManager({ services, onServiceInstalled }: DownloadManage
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-4 w-4 p-0 hover:bg-red-100 dark:hover:bg-red-900/50"
+                            className="h-4 w-4 p-0"
                             onClick={() => handleCancelInstallation(service.serviceName)}
                           >
                             <X className="w-3 h-3" />
